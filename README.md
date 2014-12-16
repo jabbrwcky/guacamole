@@ -578,7 +578,7 @@ If you find a bug in this gem, please report it on [our tracker](https://github.
 
 ## Contributing
 
-If you want to contribute to the project, see CONTRIBUTING.md for details. It contains information on our process and how to set up everything. The following people have contributed to this project:
+If you want to contribute to the project, see [CONTRIBUTING.md](CONTRIBUTING.md) for details. It contains information on our process and how to set up everything. The following people have contributed to this project:
 
 * Lucas Dohmen ([@moonglum](https://github.com/moonglum)): Developer
 * Dirk Breuer ([@railsbros-dirk](https://github.com/railsbros-dirk)): Developer
