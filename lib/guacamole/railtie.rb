@@ -30,7 +30,7 @@ module Guacamole
       elsif (config_file = Rails.root.join('config', 'guacamole.yml')).file?
         Guacamole::Configuration.load config_file
       else
-        warn_msg = '[WARNING] No configuration could be found. Either provide a `guacamole.yml` or a connection URI with `ENV["DATABASE_URL"]`'
+        warn_msg = '[WARNING] No configuration could be found. Either set a connection URI with `ENV["DATABASE_URL"]` or provide a `guacamole.yml`.'
         warn warn_msg
         Guacamole.logger.warn warn_msg
       end
