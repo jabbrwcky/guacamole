@@ -517,7 +517,7 @@ For more information about usage please refer to the RDoc and the code.
 
 ## Issues or Questions
 
-If you find a bug in this gem, please report it on [our tracker](https://github.com/triAGENS/guacamole/issues). We use [Waffle.io](https://waffle.io/triagens/guacamole) to manage the tickets – go there to see the current status of the ticket. If you have a question, just contact us via the [mailing list](https://groups.google.com/forum/?fromgroups#!forum/ashikawa) – we are happy to help you :smile:
+If you find a bug in this gem, please report it on [our tracker](https://github.com/triAGENS/guacamole/issues). If you have a question, just contact us via the [mailing list](https://groups.google.com/forum/?fromgroups#!forum/ashikawa) – we are happy to help you :smile:
 
 ## Contributing
 
