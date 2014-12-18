@@ -55,4 +55,3 @@ describe Guacamole::Edge do
     end
   end
 end
-

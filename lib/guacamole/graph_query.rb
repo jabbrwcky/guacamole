@@ -9,15 +9,15 @@ module Guacamole
       options[:start] = start
       options[:edge_collection] = edge_collection
       self
-    end 
+    end
 
-    def ==(other)
-      # TODO implement reasonable comparision
+    # @todo implement reasonable comparison
+    def ==(*)
     end
 
     private
 
-    def perfom_query(iterator, &block)
+    def perfom_query(iterator)
       enumerator = case options[:type]
                    when :neighbors
                      connection.neighbors(options[:start], edges: options[:edge_collection])
@@ -25,7 +25,7 @@ module Guacamole
                      [].to_enum
                    end
 
-      enumerator.each(&iterator) 
-    end 
+      enumerator.each(&iterator)
+    end
   end
 end

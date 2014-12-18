@@ -44,7 +44,7 @@ describe 'BasicAQLSupport' do
   it 'should allow to provide a custom `FOR x IN y` part' do
     pony_by_name = PoniesCollection.by_aql('FILTER p.name == @name',
                                            { name: 'Candy Mane' },
-                                           { for_in: 'FOR p IN ponies', return_as: 'RETURN p'}).first
+                                           for_in: 'FOR p IN ponies', return_as: 'RETURN p').first
     expect(pony_by_name).to eq earth_pony
   end
 end

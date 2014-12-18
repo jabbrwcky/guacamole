@@ -46,7 +46,7 @@ module Guacamole
       def get_value(model)
         value = model.send(getter)
 
-        value.kind_of?(Guacamole::Query) ? value.entries : value
+        value.is_a?(Guacamole::Query) ? value.entries : value
       end
 
       # The name of the setter for this attribute
@@ -80,7 +80,7 @@ module Guacamole
       # @return [Boolean] True if both have the same name
       def ==(other)
         other.instance_of?(self.class) &&
-          other.name == self.name
+          other.name == name
       end
       alias_method :eql?, :==
     end
@@ -156,7 +156,7 @@ module Guacamole
         model.key = document.key
         model.rev = document.revision
 
-        handle_related_documents(document, model)
+        handle_related_documents(model)
 
         model
       end
@@ -172,7 +172,7 @@ module Guacamole
       document = model.attributes.dup.except(:key, :rev)
 
       handle_embedded_models(model, document)
-      handle_related_models(model, document)
+      handle_related_models(document)
 
       document
     end
@@ -263,13 +263,13 @@ module Guacamole
       end
     end
 
-    def handle_related_models(model, document)
+    def handle_related_models(document)
       edge_attributes.each do |edge_attribute|
         document.delete(edge_attribute.name)
       end
     end
 
-    def handle_related_documents(document, model)
+    def handle_related_documents(model)
       edge_attributes.each do |edge_attribute|
         just_one = case model.class.attribute_set[edge_attribute.name].type
                    when Virtus::Attribute::Collection::Type then false

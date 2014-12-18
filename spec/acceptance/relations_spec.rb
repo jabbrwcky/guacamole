@@ -38,7 +38,7 @@ describe 'Graph based relations' do
       let(:catching_fire) { Fabricate.build(:book, title: 'Catching Fire') }
       let(:mockingjay) { Fabricate.build(:book, title: 'Mockingjay') }
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
-      
+
       it 'should create the start, all targets and connect them' do
         suzanne_collins.books = panem_trilogy
         AuthorsCollection.save suzanne_collins
@@ -48,7 +48,7 @@ describe 'Graph based relations' do
         expect(author.books.map(&:title)).to match_array panem_trilogy.map(&:title)
       end
     end
-    
+
     context 'one target is new' do
       let(:suzanne_collins) { Fabricate.build(:author, name: 'Suzanne Collins') }
 
@@ -97,7 +97,7 @@ describe 'Graph based relations' do
       let(:catching_fire) { Fabricate(:book, title: 'Catching Fire') }
       let(:mockingjay) { Fabricate(:book, title: 'Mockingjay') }
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
-      
+
       before do
         suzanne_collins.books = [the_hunger_games, catching_fire]
         AuthorsCollection.save suzanne_collins
@@ -123,7 +123,7 @@ describe 'Graph based relations' do
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
 
       let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins._id).count } }
-      
+
       before do
         suzanne_collins.books = [the_hunger_games, catching_fire, mockingjay, deathly_hallows]
         AuthorsCollection.save suzanne_collins
@@ -131,7 +131,7 @@ describe 'Graph based relations' do
 
       it 'should remove the edge' do
         suzanne_collins.books.pop
-        
+
         expect { AuthorsCollection.save suzanne_collins }.to change(&authorships_count).by -1
       end
 
@@ -161,7 +161,7 @@ describe 'Graph based relations' do
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
 
       let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins._id).count } }
-      
+
       before do
         suzanne_collins.books = [the_hunger_games, catching_fire, mockingjay, deathly_hallows]
         AuthorsCollection.save suzanne_collins
@@ -174,7 +174,7 @@ describe 'Graph based relations' do
       let(:suzanne_collins) { Fabricate.build(:author, name: 'Suzanne Collins') }
 
       let(:the_hunger_games) { Fabricate.build(:book, title: 'The Hunger Games') }
-      
+
       it 'should create the target, the start and connects them' do
         the_hunger_games.author = suzanne_collins
         BooksCollection.save the_hunger_games
@@ -184,7 +184,7 @@ describe 'Graph based relations' do
         expect(book.author.name).to eq suzanne_collins.name
       end
     end
-     
+
     context 'the target is new' do
       let(:suzanne_collins) { Fabricate.build(:author, name: 'Suzanne Collins') }
 

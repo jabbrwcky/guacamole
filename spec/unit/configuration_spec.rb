@@ -206,14 +206,14 @@ describe Guacamole::Configuration do
     let(:current_environment) { 'development' }
 
     before do
-      allow(subject).to       receive(:current_environment).and_return(current_environment)
-      allow(subject).to       receive(:warn_if_database_was_not_yet_created)
-      allow(subject).to       receive(:create_database_connection)
-      allow(subject).to       receive(:process_file_with_erb).with('config_file.yml')
-      allow(subject).to       receive(:build_config).and_return(config_struct)
-      allow(config).to        receive(:[]).with('development').and_return(env_config)
+      allow(subject).to receive(:current_environment).and_return(current_environment)
+      allow(subject).to receive(:warn_if_database_was_not_yet_created)
+      allow(subject).to receive(:create_database_connection)
+      allow(subject).to receive(:process_file_with_erb).with('config_file.yml')
+      allow(subject).to receive(:build_config).and_return(config_struct)
+      allow(config).to receive(:[]).with('development').and_return(env_config)
       allow(config_struct).to receive(:graph).and_return('custom_graph_name')
-      allow(YAML).to          receive(:load).and_return(config)
+      allow(YAML).to receive(:load).and_return(config)
     end
 
     it 'should parse a YAML configuration' do

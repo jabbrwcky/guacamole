@@ -36,7 +36,7 @@ describe Guacamole::DocumentModelMapper do
     it 'should know if it responsible for a certain model' do
       expect(subject.responsible_for?(model)).to be_truthy
     end
-  end 
+  end
 
   describe 'document_to_model' do
     subject { Guacamole::DocumentModelMapper.new FancyModel, FakeIdentityMap }
@@ -69,7 +69,9 @@ describe Guacamole::DocumentModelMapper do
     end
 
     context 'with attributes as edge relations' do
-      let(:attribute_with_edge_relation) { instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation') }
+      let(:attribute_with_edge_relation) do
+        instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation')
+      end
       let(:related_edge_class) { instance_double('Guacamole::Edge') }
       let(:relation_proxy_class) { Guacamole::Proxies::Relation }
       let(:relation_proxy) { instance_double('Guacamole::Proxies::Relation') }
@@ -78,15 +80,15 @@ describe Guacamole::DocumentModelMapper do
         allow(attribute_with_edge_relation).to receive(:setter).and_return('my_relation=')
         allow(attribute_with_edge_relation).to receive(:edge_class).and_return(related_edge_class)
         allow(subject).to receive(:edge_attributes).and_return([attribute_with_edge_relation])
-        allow(relation_proxy_class).to receive(:new)
-          .with(model_instance, related_edge_class)
-          .and_return(relation_proxy)
+        allow(relation_proxy_class).to receive(:new).
+                                        with(model_instance, related_edge_class).
+                                        and_return(relation_proxy)
       end
 
       it 'should initialize a relation proxy with the model and the appropriate edge class' do
-        expect(relation_proxy_class).to receive(:new)
-          .with(model_instance, related_edge_class)
-          .and_return(relation_proxy)
+        expect(relation_proxy_class).to receive(:new).
+                                         with(model_instance, related_edge_class).
+                                         and_return(relation_proxy)
 
         subject.document_to_model document
       end
@@ -95,7 +97,7 @@ describe Guacamole::DocumentModelMapper do
         expect(model_instance).to receive(:key=).ordered
         expect(model_instance).to receive(:rev=).ordered
         expect(subject).to receive(:handle_related_documents).ordered
-        
+
         subject.document_to_model document
       end
 
@@ -170,7 +172,9 @@ describe Guacamole::DocumentModelMapper do
     end
 
     context 'with attributes as edge relations' do
-      let(:attribute_with_edge_relation) { instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation') }
+      let(:attribute_with_edge_relation) do
+        instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation')
+      end
 
       before do
         allow(subject).to receive(:edge_attributes).and_return([attribute_with_edge_relation])

@@ -36,7 +36,7 @@ module Guacamole
       end
 
       def select_mapper
-        select_mapper = ->(m) { edge_collection.mapper_for_start(m) }
+        ->(m) { edge_collection.mapper_for_start(m) }
       end
 
       def from_vertices
@@ -71,9 +71,9 @@ module Guacamole
         from_vertices.each_with_object([]) do |from_vertex, edges|
           to_vertices.each do |to_vertex|
             edges << {
-              :_from => from_vertex[:_id] || from_vertex[:object_id],
-              :_to   => to_vertex[:_id]   || to_vertex[:object_id],
-              :attributes => {}
+              _from: from_vertex[:_id] || from_vertex[:object_id],
+              _to: to_vertex[:_id] || to_vertex[:object_id],
+              attributes: {}
             }
           end
         end
@@ -117,13 +117,13 @@ module Guacamole
       }
 
       [
-       {
-         name: nil,
-         fromVertices: [fake_vertex],
-         toVertices: [],
-         edges: [],
-         oldEdges: []
-       }
+        {
+          name: nil,
+          fromVertices: [fake_vertex],
+          toVertices: [],
+          edges: [],
+          oldEdges: []
+        }
       ]
     end
 

@@ -5,12 +5,7 @@ require 'guacamole/edge_collection'
 
 describe Guacamole::EdgeCollection do
   let(:graph)  { double('Graph') }
-# /// What do we need?
-#
-# 2. Each EachCollection needs the following features
-#   * Provide access to graph functions provided by Ashikawa::Core (i.e. Neighbors function)
-
- let(:config) { double('Configuration') }
+  let(:config) { double('Configuration') }
 
   before do
     allow(Guacamole).to receive(:configuration).and_return(config)
@@ -50,11 +45,11 @@ describe Guacamole::EdgeCollection do
         expect(edge_collection.name).to eq 'ExampleEdgesCollection'
         expect(edge_collection.ancestors).to include Guacamole::EdgeCollection
       end
-        
+
       it 'should return the edge collection for a givene edge class' do
-        allow(subject).to receive(:create_edge_collection)
-          .with('AmazingEdgesCollection')
-          .and_return(auto_defined_edge_collection)
+        allow(subject).to receive(:create_edge_collection).
+                           with('AmazingEdgesCollection').
+                           and_return(auto_defined_edge_collection)
 
         expect(subject.for(edge_class)).to eq auto_defined_edge_collection
       end
@@ -73,7 +68,7 @@ describe Guacamole::EdgeCollection do
     let(:raw_edge_collection) { double('Ashikawa::Core::EdgeCollection') }
     let(:collection_a) { :a }
     let(:collection_b) { :b }
-    let(:edge_class) { double('EdgeClass', name: 'SomeEdge', from: collection_a, to: collection_b)}
+    let(:edge_class) { double('EdgeClass', name: 'SomeEdge', from: collection_a, to: collection_b) }
     let(:model) { double('Model') }
 
     before do
@@ -92,12 +87,12 @@ describe Guacamole::EdgeCollection do
     its(:edge_class) { should eq edge_class }
 
     it 'should be a specialized Guacamole::Collection' do
-      expect(subject).to include Guacamole::Collection 
+      expect(subject).to include Guacamole::Collection
     end
 
     it 'should map the #connectino to the underlying edge_connection' do
       allow(subject).to receive(:graph).and_return(graph)
-      
+
       expect(subject.connection).to eq raw_edge_collection
     end
 
@@ -114,9 +109,10 @@ describe Guacamole::EdgeCollection do
 
         expect { subject.add_edge_definition_to_graph }.not_to raise_error
       end
-      
+
       it 'should create the edge definition based on the edge class' do
-        expect(graph).to receive(:add_edge_definition).with(edge_collection_name, from: [collection_a], to: [collection_b])
+        expect(graph).to receive(:add_edge_definition).with(edge_collection_name,
+                                                            from: [collection_a], to: [collection_b])
 
         subject.add_edge_definition_to_graph
       end
@@ -170,7 +166,7 @@ describe Guacamole::EdgeCollection do
 
       it 'should provide a #neighbors function' do
         expect(graph_query).to receive(:neighbors).with(model, 'some_edges')
-        
+
         subject.neighbors(model)
       end
     end

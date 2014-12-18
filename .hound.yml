@@ -22,7 +22,7 @@ CollectionMethods:
   PreferredMethods:
     collect:  'map'
     inject:   'reduce'
-    find:     'detect'
+    find:     'find'
     find_all: 'select'
 
 SignalException:
