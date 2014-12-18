@@ -1,3 +1,19 @@
+## Version 0.4.0
+
+**Codename: Theatre of Pain**
+
+This release focus on the graph integration of ArangoDB 2.2. We implemented relations on top of graphs. The old implementation for relations **has been removed**. If you still need it **don't just upgrade**.
+
+Notable changes are:
+
+  * Implement relations with a graph (#83)
+  * Added section about design to GOALS.md
+  * AQL Support is default now (#91)
+  * Typo fixes in the README (@badboy, @ifraixedes, @solnic @timoschilling)
+  * Internal changes
+    * Relations based on foreign keys have been removed
+
+
 ## Version 0.3.0
 
 **Codename: Spread your Wings**
