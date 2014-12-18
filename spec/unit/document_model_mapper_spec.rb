@@ -22,6 +22,22 @@ describe Guacamole::DocumentModelMapper do
     expect(mapper.model_class).to eq FancyModel
   end
 
+  context 'document mapper instance' do
+    subject { Guacamole::DocumentModelMapper.new FancyModel, FakeIdentityMap }
+
+    let(:model) { double('Model') }
+    let(:model_class) { double('ModelClass') }
+
+    before do
+      allow(subject).to receive(:model_class).and_return(model_class)
+      allow(model).to receive(:instance_of?).with(model_class).and_return(true)
+    end
+
+    it 'should know if it responsible for a certain model' do
+      expect(subject.responsible_for?(model)).to be_truthy
+    end
+  end
+
   describe 'document_to_model' do
     subject { Guacamole::DocumentModelMapper.new FancyModel, FakeIdentityMap }
 
@@ -52,57 +68,41 @@ describe Guacamole::DocumentModelMapper do
       subject.document_to_model document
     end
 
-    context 'with referenced_by models' do
-      let(:referenced_by_model_name)   { :cupcakes }
-      let(:referenced_by_models)       { [referenced_by_model_name] }
-      let(:association_proxy)          { Guacamole::Proxies::ReferencedBy }
-      let(:association_proxy_instance) { double('AssociationProxy') }
+    context 'with attributes as edge relations' do
+      let(:attribute_with_edge_relation) do
+        instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation')
+      end
+      let(:related_edge_class) { instance_double('Guacamole::Edge') }
+      let(:relation_proxy_class) { Guacamole::Proxies::Relation }
+      let(:relation_proxy) { instance_double('Guacamole::Proxies::Relation') }
 
       before do
-        allow(subject).to receive(:referenced_by_models).and_return referenced_by_models
-        allow(association_proxy).to receive(:new)
-          .with(referenced_by_model_name, model_instance)
-          .and_return(association_proxy_instance)
+        allow(attribute_with_edge_relation).to receive(:setter).and_return('my_relation=')
+        allow(attribute_with_edge_relation).to receive(:edge_class).and_return(related_edge_class)
+        allow(subject).to receive(:edge_attributes).and_return([attribute_with_edge_relation])
+        allow(relation_proxy_class).to receive(:new).
+                                        with(model_instance, related_edge_class).
+                                        and_return(relation_proxy)
       end
 
-      it 'should initialize the association proxy with referenced_by model and its name' do
-        expect(association_proxy).to receive(:new)
-          .with(referenced_by_model_name, model_instance)
-          .and_return(association_proxy_instance)
+      it 'should initialize a relation proxy with the model and the appropriate edge class' do
+        expect(relation_proxy_class).to receive(:new).
+                                         with(model_instance, related_edge_class).
+                                         and_return(relation_proxy)
 
         subject.document_to_model document
       end
 
-      it 'should set an association proxy' do
-        expect(model_instance).to receive("#{referenced_by_model_name}=").with(association_proxy_instance)
-
-        subject.document_to_model document
-      end
-    end
-
-    context 'with referenced models' do
-      let(:referenced_model_name)      { :pony }
-      let(:referenced_models)          { [referenced_model_name] }
-      let(:association_proxy)          { Guacamole::Proxies::References }
-      let(:association_proxy_instance) { double('AssociationProxy') }
-
-      before do
-        allow(subject).to receive(:referenced_models).and_return referenced_models
-        allow(association_proxy).to receive(:new)
-          .with(referenced_model_name, document)
-          .and_return(association_proxy_instance)
-      end
-
-      it 'should initialize the association proxy with the document and the referenced model name' do
-        expect(association_proxy).to receive(:new)
-          .with(referenced_model_name, document)
-          .and_return(association_proxy_instance)
+      it 'should set first the key and rev and after that the proxy' do
+        expect(model_instance).to receive(:key=).ordered
+        expect(model_instance).to receive(:rev=).ordered
+        expect(subject).to receive(:handle_related_documents).ordered
 
         subject.document_to_model document
       end
 
-      it 'should set an association proxy' do
-        expect(model_instance).to receive("#{referenced_model_name}=").with(association_proxy_instance)
+      it 'should assign the relation proxy for the appropriate attribute' do
+        expect(model_instance).to receive(:my_relation=).with(relation_proxy)
 
         subject.document_to_model document
       end
@@ -171,39 +171,17 @@ describe Guacamole::DocumentModelMapper do
       end
     end
 
-    context 'with referenced_by models' do
-      let(:referenced_by_model_name) { :cupcakes }
-      let(:referenced_by_models)     { [referenced_by_model_name] }
+    context 'with attributes as edge relations' do
+      let(:attribute_with_edge_relation) do
+        instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation')
+      end
 
       before do
-        allow(subject).to receive(:referenced_by_models).and_return referenced_by_models
+        allow(subject).to receive(:edge_attributes).and_return([attribute_with_edge_relation])
       end
 
-      it 'should remove the referenced_by attribute from the document' do
-        expect(model_attributes).to receive(:delete).with(referenced_by_model_name)
-
-        subject.model_to_document(model)
-      end
-    end
-
-    context 'with referenced models' do
-      let(:referenced_model)       { double('ReferencedModel', key: 23) }
-      let(:referenced_model_name)  { :pony }
-      let(:referenced_models)      { [referenced_model_name] }
-
-      before do
-        allow(subject).to receive(:referenced_models).and_return referenced_models
-        allow(model).to receive(:send).with(referenced_model_name).and_return referenced_model
-      end
-
-      it 'should remove the referenced attribute from the document' do
-        expect(model_attributes).to receive(:delete).with(referenced_model_name)
-
-        subject.model_to_document(model)
-      end
-
-      it 'should add the key of the referenced model to the document' do
-        expect(model_attributes).to receive(:[]=).with(:"#{referenced_model_name}_id", referenced_model.key)
+      it 'should remove the attributes from the document' do
+        expect(model_attributes).to receive(:delete).with('my_relation')
 
         subject.model_to_document(model)
       end
@@ -220,23 +198,52 @@ describe Guacamole::DocumentModelMapper do
     end
   end
 
-  describe 'referenced_by' do
-    subject { Guacamole::DocumentModelMapper.new FancyModel, FakeIdentityMap }
+  describe 'attribute' do
+    describe Guacamole::DocumentModelMapper::Attribute do
+      subject { Guacamole::DocumentModelMapper::Attribute.new(:attribute_name) }
 
-    it 'should remember which models holding references' do
-      subject.referenced_by :ponies
+      its(:name) { should eq :attribute_name }
+      its(:options) { should eq({}) }
+      its(:getter) { should eq :attribute_name }
+      its(:setter) { should eq 'attribute_name=' }
 
-      expect(subject.referenced_by_models).to include :ponies
+      context 'attributes for relations' do
+        let(:edge_class) { double('SomeEdgeClass') }
+
+        before do
+          subject.options[:via] = edge_class
+        end
+
+        it 'should know if the attribute must be mapped via an edge' do
+          expect(subject.map_via_edge?).to be_truthy
+        end
+
+        it 'should hold a reference to the edge class' do
+          expect(subject.edge_class).to eq edge_class
+        end
+      end
     end
-  end
 
-  describe 'references' do
     subject { Guacamole::DocumentModelMapper.new FancyModel, FakeIdentityMap }
 
-    it 'should remember which models are referenced' do
-      subject.references :pony
+    it 'should add an attribute to be handled differently during the mapping' do
+      subject.attribute :special_one
 
-      expect(subject.referenced_models).to include :pony
+      expect(subject.attributes).to include Guacamole::DocumentModelMapper::Attribute.new(:special_one)
+    end
+
+    it 'should hold a list of all attributes to be considered during the mapping' do
+      subject.attribute :some_attribute
+      subject.attribute :another_attribute
+
+      expect(subject.attributes.count).to eq 2
+    end
+
+    it 'should hold a list of all attributes to be mapped via Edges' do
+      subject.attribute :normal_attribute
+      subject.attribute :related_model, via: double('EdgeClass')
+
+      expect(subject.edge_attributes).to include(an_object_having_attributes(name: :related_model))
     end
   end
 end

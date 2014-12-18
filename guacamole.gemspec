@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(spec)/})
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'ashikawa-core', '~> 0.12.0'
+  spec.add_dependency 'ashikawa-core', '~> 0.13.1'
   spec.add_dependency 'virtus', '~> 1.0.1'
   spec.add_dependency 'activesupport', '>= 4.0.0'
   spec.add_dependency 'activemodel', '>= 4.0.0'
@@ -36,7 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'pry', '~> 0.9.12'
   spec.add_development_dependency 'rake', '~> 10.3.2'
   spec.add_development_dependency 'reek', '~> 1.3.7'
-  spec.add_development_dependency 'rspec', '~> 3.0.0'
+  spec.add_development_dependency 'rspec', '~> 3.1.0'
   spec.add_development_dependency 'timecop', '~> 0.7.1'
   spec.add_development_dependency 'yard', '~> 0.8.7.4'
 end

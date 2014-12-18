@@ -2,6 +2,7 @@
 
 require 'guacamole/query'
 require 'guacamole/aql_query'
+require 'guacamole/transaction'
 
 require 'ashikawa-core'
 require 'active_support'
@@ -34,7 +35,7 @@ module Guacamole
       def_delegators :mapper, :model_to_document
       def_delegator :connection, :fetch, :fetch_document
 
-      attr_accessor :connection, :mapper, :database
+      attr_accessor :connection, :mapper, :database, :graph
 
       # The raw `Database` object that was configured
       #
@@ -47,18 +48,33 @@ module Guacamole
         @database ||= Guacamole.configuration.database
       end
 
+      # The application graph to be used
+      #
+      # This is quite important since we're using the Graph module to realize relations
+      # between models. To guarantee consistency of your data all requests must be routed
+      # through the graph module.
+      #
+      # @see http://rubydoc.info/gems/ashikawa-core/Ashikawa/Core/Graph
+      # @return [Ashikawa::Core::Graph]
+      def graph
+        @graph ||= Guacamole.configuration.graph
+      end
+
       # The raw `Collection` object for this collection
       #
       # You can use this method for low level communication with the collection.
       # Details can be found in the Ashikawa::Core documentation.
       #
-      # @note We're well aware that we return a Ashikawa::Core::Collection here
+      # @note We're well aware that we return a Ashikawa::Core::VertecCollection here
       #       but naming it a connection. We think the name `connection` still
       #       fits better in this context.
-      # @see http://rubydoc.info/gems/ashikawa-core/Ashikawa/Core/Collection
-      # @return [Ashikawa::Core::Collection]
+      # @see http://rubydoc.info/gems/ashikawa-core/Ashikawa/Core/VertexCollection
+      # @return [Ashikawa::Core::VertexCollection]
       def connection
-        @connection ||= database[collection_name]
+        # FIXME: This is a workaround for a bug in Ashikawa::Core (https://github.com/triAGENS/ashikawa-core/issues/139)
+        @connection ||= graph.add_vertex_collection(collection_name)
+      rescue
+        @connection ||= graph.vertex_collection(collection_name)
       end
 
       # The DocumentModelMapper for this collection
@@ -285,54 +301,12 @@ module Guacamole
       #       persisted. In future versions we should add something like `:autosave`
       #       to always save associated models.
       def create_document_from(model)
-        create_referenced_models_of model
+        result = with_transaction(model)
 
-        document = connection.create_document(model_to_document(model))
+        model.key = result[model.object_id.to_s]['_key']
+        model.rev = result[model.object_id.to_s]['_rev']
 
-        model.key = document.key
-        model.rev = document.revision
-
-        create_referenced_by_models_of model
-
-        document
-      end
-
-      # Creates all not yet persisted referenced models of `model`
-      #
-      # Referenced models needs to be created before the parent model, because it needs their `key`
-      #
-      # @api private
-      # @todo This method should be considered 'work in progress'. We already know we need to change this.
-      # @return [void]
-      def create_referenced_models_of(model)
-        mapper.referenced_models.each do |ref_model_name|
-          ref_collection = mapper.collection_for(ref_model_name)
-
-          ref_model = model.send(ref_model_name)
-          next unless ref_model
-
-          ref_collection.save ref_model unless ref_model.persisted?
-        end
-      end
-
-      # Creates all not yet persisted models which are referenced by `model`
-      #
-      # Referenced by models needs to created after the parent model, because they need its `key`
-      #
-      # @api private
-      # @todo This method should be considered 'work in progress'. We already know we need to change this.
-      # @return [void]
-      def create_referenced_by_models_of(model)
-        mapper.referenced_by_models.each do |ref_model_name|
-          ref_collection = mapper.collection_for(ref_model_name)
-
-          ref_models = model.send(ref_model_name)
-
-          ref_models.each do |ref_model|
-            ref_model.send("#{model.class.name.demodulize.underscore}=", model)
-            ref_collection.save ref_model unless ref_model.persisted?
-          end
-        end
+        model
       end
 
       # Replace a document in the database with this model
@@ -340,12 +314,15 @@ module Guacamole
       # @api private
       # @note This will **not** update associated models (see {#create})
       def replace_document_from(model)
-        document = model_to_document(model)
-        response = connection.replace(model.key, document)
+        result = with_transaction(model)
 
-        model.rev = response['_rev']
+        model.rev = result['_rev']
 
-        document
+        model
+      end
+
+      def with_transaction(model)
+        Transaction.run(collection: self, model: model)
       end
 
       # Gets the callback class for the given model class
