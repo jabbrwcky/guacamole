@@ -1,0 +1,8 @@
+---
+rules:
+  copy_paste:
+    except:
+      - spec/**
+  documentation:
+    except:
+      - spec/**
