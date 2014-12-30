@@ -13,6 +13,13 @@ module Guacamole
     extend ActiveSupport::Concern
     include Guacamole::Collection
 
+    NEIGHBORS_AQL_STRING = <<-AQL
+      FOR n IN GRAPH_NEIGHBORS(@graph,
+                      { _key: @model_key },
+                      { direction: @direction, edgeCollectionRestriction: @edge_collection })
+        RETURN n.vertex
+    AQL
+
     class << self
       def for(edge_class)
         collection_name = [edge_class.name.pluralize, 'Collection'].join
@@ -49,13 +56,6 @@ module Guacamole
       end
 
       def neighbors(model, direction = :inbound)
-        aql_string = <<-AQL
-        FOR n IN GRAPH_NEIGHBORS(@graph,
-                        { _key: @model_key },
-                        { direction: @direction, edgeCollectionRestriction: @edge_collection })
-          RETURN n.vertex
-        AQL
-
         bind_parameters = {
           graph: Guacamole.configuration.graph.name,
           model_key: model.key,
@@ -63,11 +63,13 @@ module Guacamole
           direction: direction
         }
 
-        options = { return_as: nil, for_in: nil }
+        build_neihgbors_query(model, bind_parameters)
+      end
 
-        query                 = AqlQuery.new(self, mapper_for_target(model), options)
-        query.aql_fragment    = aql_string
-        query.bind_parameters = bind_parameters
+      def build_neihgbors_query(model, params = {})
+        query                 = AqlQuery.new(self, mapper_for_target(model), return_as: nil, for_in: nil)
+        query.aql_fragment    = NEIGHBORS_AQL_STRING
+        query.bind_parameters = params
         query
       end
 

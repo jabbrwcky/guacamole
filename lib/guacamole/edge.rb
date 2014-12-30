@@ -47,18 +47,18 @@ module Guacamole
 
     module ClassMethods
       def from(collection_name = nil)
-        if collection_name.nil?
-          @from
-        else
+        if collection_name
           @from = collection_name
+        else
+          @from
         end
       end
 
       def to(collection_name = nil)
-        if collection_name.nil?
-          @to
-        else
+        if collection_name
           @to = collection_name
+        else
+          @to
         end
       end
 

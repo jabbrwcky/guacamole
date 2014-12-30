@@ -86,6 +86,7 @@ describe Guacamole::DocumentModelMapper do
       end
 
       it 'should initialize a relation proxy with the model and the appropriate edge class' do
+        pending 'Finish the specs'
         expect(relation_proxy_class).to receive(:new).
                                          with(model_instance, related_edge_class).
                                          and_return(relation_proxy)
@@ -102,6 +103,7 @@ describe Guacamole::DocumentModelMapper do
       end
 
       it 'should assign the relation proxy for the appropriate attribute' do
+        pending 'Finish the specs'
         expect(model_instance).to receive(:my_relation=).with(relation_proxy)
 
         subject.document_to_model document
