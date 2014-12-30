@@ -107,6 +107,7 @@ module Guacamole
     def initialize(options)
       @collection = options[:collection]
       @model      = options[:model]
+      @collection.connection # Init the connection
     end
 
     def real_edge_collections
