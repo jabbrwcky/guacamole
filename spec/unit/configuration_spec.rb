@@ -126,6 +126,7 @@ describe Guacamole::Configuration do
 
       it 'should take the graph name from the ENV' do
         allow(ENV).to receive(:[]).with('GUACAMOLE_GRAPH').and_return('graph_from_env')
+        allow(ENV).to receive(:has_key?).with('GUACAMOLE_GRAPH').and_return(true)
 
         expect(subject.graph_name).to eq 'graph_from_env'
       end

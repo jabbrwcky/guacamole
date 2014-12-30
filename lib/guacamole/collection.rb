@@ -301,10 +301,10 @@ module Guacamole
       #       persisted. In future versions we should add something like `:autosave`
       #       to always save associated models.
       def create_document_from(model)
-        result = with_transaction(model)
+        result = with_transaction(model)[model.object_id.to_s]
 
-        model.key = result[model.object_id.to_s]['_key']
-        model.rev = result[model.object_id.to_s]['_rev']
+        model.key = result['_key']
+        model.rev = result['_rev']
 
         model
       end

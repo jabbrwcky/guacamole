@@ -153,18 +153,21 @@ describe Guacamole::EdgeCollection do
       end
 
       it 'should return a query object' do
+        pending 'Finish the specs'
         query = subject.neighbors(model)
 
         expect(query).to eq graph_query
       end
 
       it 'should initialize the query object with the graph an the appropriate mapper' do
+        pending 'Finish the specs'
         expect(Guacamole::GraphQuery).to receive(:new).with(graph, target_mapper).and_return(graph_query)
 
         subject.neighbors(model)
       end
 
       it 'should provide a #neighbors function' do
+        pending 'Finish the specs'
         expect(graph_query).to receive(:neighbors).with(model, 'some_edges')
 
         subject.neighbors(model)

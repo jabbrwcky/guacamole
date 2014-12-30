@@ -157,7 +157,7 @@ module Guacamole
       # @return [String] The name of the graph to be used
       def graph_name
         return @graph_name if @graph_name
-        return ENV['GUACAMOLE_GRAPH'] if ENV['GUACAMOLE_GRAPH']
+        return ENV['GUACAMOLE_GRAPH'] if ENV.has_key?('GUACAMOLE_GRAPH')
 
         base_name = if Module.const_defined?('Rails')
                       Rails.application.class.name.deconstantize.underscore

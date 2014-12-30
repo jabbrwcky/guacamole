@@ -9,6 +9,7 @@ module Guacamole
 
     attr_reader :collection, :model
 
+    # This class smells of :reek:TooManyInstanceVariables
     class TxEdgeCollection
       attr_reader :edge_collection, :model, :ea, :to_models, :from_models, :old_edges
 
@@ -20,6 +21,8 @@ module Guacamole
         init
       end
 
+      # This method smells of :reek:DuplicateMethodCall
+      # This method smells of :reek:TooManyStatements
       def init
         case model
         when ea.edge_class.from_collection.model_class
@@ -35,10 +38,12 @@ module Guacamole
         end
       end
 
+      # This method smells of :reek:UncommunicativeVariableName
       def select_mapper
         ->(m) { edge_collection.mapper_for_start(m) }
       end
 
+      # This method smells of :reek:UncommunicativeVariableName
       def from_vertices
         from_models.map do |m|
           {
@@ -51,6 +56,7 @@ module Guacamole
         end
       end
 
+      # This method smells of :reek:UncommunicativeVariableName
       def to_vertices
         to_models.map do |m|
           {
@@ -63,6 +69,8 @@ module Guacamole
         end
       end
 
+      # This method smells of :reek:NilCheck
+      # This method smells of :reek:UncommunicativeVariableName
       def to_vertices_with_only_existing_documents
         to_vertices.select { |v| v[:_key].nil?  }
       end
@@ -99,6 +107,7 @@ module Guacamole
     def initialize(options)
       @collection = options[:collection]
       @model      = options[:model]
+      @collection.connection # Init the connection
     end
 
     def real_edge_collections
