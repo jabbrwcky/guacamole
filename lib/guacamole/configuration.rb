@@ -123,7 +123,7 @@ module Guacamole
       end
 
       def shared_path
-        Pathname.new(File.join(__dir__, '..', '..', 'shared'))
+        Pathname.new(File.join(File.dirname(__FILE__), '..', '..', 'shared'))
       end
 
       # Returns the graph associated with this Guacamole application.
