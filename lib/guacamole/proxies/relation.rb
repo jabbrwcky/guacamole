@@ -14,9 +14,9 @@ module Guacamole
         direction = options[:inverse] ? :inbound : :outbound
 
         if options[:just_one]
-          init model, -> () { responsible_edge_collection.neighbors(model, direction).to_a.first }
+          init model, lambda { responsible_edge_collection.neighbors(model, direction).to_a.first }
         else
-          init model, -> () { responsible_edge_collection.neighbors(model, direction) }
+          init model, lambda { responsible_edge_collection.neighbors(model, direction) }
         end
       end
     end
