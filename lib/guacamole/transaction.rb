@@ -9,6 +9,23 @@ module Guacamole
 
     attr_reader :collection, :model
 
+    # A simple structure to build the vertex information we need to pass to the
+    # transaction code.
+    class Vertex < Struct.new(:model, :collection, :document)
+      # Creates a hash to be used in the transaction
+      #
+      # @return [Hash] A hash with the required information to be passed to the database
+      def to_h
+        {
+         object_id: model.object_id,
+         collection: collection,
+         document: document,
+         _key: model.key,
+         _id: model._id
+        }
+      end
+    end
+
     # This class smells of :reek:TooManyInstanceVariables
     class TxEdgeCollection
       attr_reader :edge_collection, :model, :ea, :to_models, :from_models, :old_edges
@@ -87,7 +104,7 @@ module Guacamole
         end
       end
 
-      def edge_collection_for_transaction
+      def to_h
         {
           name: edge_collection.collection_name,
           fromVertices: from_vertices,
@@ -110,25 +127,21 @@ module Guacamole
       @collection.connection # Init the connection
     end
 
-    def real_edge_collections
-      @real_edge_collections ||= mapper.edge_attributes.each_with_object([]) do |ea, edge_collections|
-        edge_collections << prepare_edge_collection_for_transaction(ea)
+    def edges_present?
+      !mapper.edge_attributes.empty?
+    end
+
+    def full_edge_collections
+      @full_edge_collections ||= mapper.edge_attributes.each_with_object([]) do |ea, edge_collections|
+        edge_collections << TxEdgeCollection.new(ea, model).to_h
       end
     end
 
-    def fake_edge_collections
-      fake_vertex = {
-        object_id: model.object_id,
-        collection: collection.collection_name,
-        document: mapper.model_to_document(model),
-        _key: model.key,
-        _id: model._id
-      }
-
+    def simple_edge_collections
       [
         {
           name: nil,
-          fromVertices: [fake_vertex],
+          fromVertices: [Vertex.new(model, collection.collection_name, mapper.model_to_document(model)).to_h],
           toVertices: [],
           edges: [],
           oldEdges: []
@@ -137,11 +150,7 @@ module Guacamole
     end
 
     def edge_collections
-      real_edge_collections.present? ? real_edge_collections : fake_edge_collections
-    end
-
-    def prepare_edge_collection_for_transaction(ea)
-      TxEdgeCollection.new(ea, model).edge_collection_for_transaction
+      edges_present? ? full_edge_collections : simple_edge_collections
     end
 
     def write_collections
