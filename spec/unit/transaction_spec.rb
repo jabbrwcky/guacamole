@@ -19,6 +19,18 @@ describe Guacamole::Transaction::Vertex do
     allow(model).to receive(:_id).and_return(model_id)
   end
 
+  its(:key) { should eq model_key }
+
+  context 'with new vertex' do
+    let(:model_id) { nil }
+
+    its(:id) { should be model_object_id }
+  end
+
+  context 'with existing vertex' do
+    its(:id) { should eq model_id }
+  end
+
   it 'should return a hash to be used in the transaction code' do
     vertex_hash = {
                    object_id: model_object_id,
@@ -28,7 +40,176 @@ describe Guacamole::Transaction::Vertex do
                    _id: model._id
                   }
 
-    expect(subject.to_h).to eq vertex_hash
+    expect(subject.as_json).to eq vertex_hash
+  end
+end
+
+describe Guacamole::Transaction::TargetStatesBuilder do
+  subject { Guacamole::Transaction::TragetStatesBuilder }
+end
+
+describe Guacamole::Transaction::VertexTargetState do
+  
+end
+
+describe Guacamole::Transaction::SubGraphTargetState do
+  let(:model) { double('Model') }
+  let(:model_id) { double('ModelId') }
+  let(:from_model_class) { double('FromModelClass') }
+  let(:to_model_class) { double('ToModelClass') }
+
+  let(:from_collection) { double('Collection') }
+  let(:from_collection_name) { double('CollectionName') }
+
+  let(:to_collection) { double('Collection') }
+  let(:to_collection_name) { double('CollectionName') }
+
+  let(:edge_attribute) { double('EdgeAttribute') }
+  let(:edge_class) { double('EdgeClass') }
+  let(:edge_collection_class) { double('EdgeCollectionClass') }
+  let(:edge_collection) { double('EdgeCollection') }
+
+  let(:from_document) { double('Document') }
+  let(:to_document) { double('Document') }
+
+  subject { Guacamole::Transaction::SubGraphTargetState.new(edge_attribute, model) }
+
+  before do
+    stub_const('Guacamole::EdgeCollection', edge_collection_class)
+
+    allow(model).to receive(:_id).and_return(model_id)
+
+    allow(edge_class).to receive(:from_collection).and_return(from_collection)
+    allow(from_collection).to receive(:model_class).and_return(from_model_class)
+    allow(from_collection).to receive(:collection_name).and_return(from_collection_name)
+
+    allow(edge_class).to receive(:to_collection).and_return(to_collection)
+    allow(to_collection).to receive(:model_class).and_return(to_model_class)
+    allow(to_collection).to receive(:collection_name).and_return(to_collection_name)
+
+    allow(edge_attribute).to receive(:edge_class).and_return(edge_class)
+    allow(edge_collection_class).to receive(:for).and_return(edge_collection)
+  end
+
+  its(:start_model) { should eq model }
+  its(:edge_attribute) { should eq edge_attribute }
+  its(:edge_collection) { should eq edge_collection }
+  its(:edge_class) { should eq edge_class }
+
+  it 'should build a list of :to vertices with existing documents' do
+    vertex_with_key    = double('Vertex', key: double)
+    vertex_without_key = double('Vertex', key: nil)
+
+    allow(subject).to receive(:to_vertices).and_return([vertex_with_key, vertex_without_key])
+
+    expect(subject.to_vertices_with_only_existing_documents).to eq [vertex_without_key]
+  end
+
+  it 'should have a representation suitable for JSON serialization'
+
+  it 'should select the responsible mapper for a given model' do
+    expect(edge_collection).to receive(:mapper_for_start).with(model)
+
+    subject.mapper_for_model(model)
+  end
+
+  it 'should map the given model to a document' do
+    mapper = double('Mapper')
+    allow(subject).to receive(:mapper_for_model).with(model).and_return(mapper)
+    expect(mapper).to receive(:model_to_document).with(model)
+
+    subject.model_to_document(model)
+  end
+
+  it 'should get a single related model of the edge_attribute as array' do
+    related_model = double('Model')
+    allow(edge_attribute).to receive(:get_value).with(model).and_return(related_model)
+
+    expect(subject.related_models).to eq [related_model]
+  end
+
+  it 'should get multiple related models of the edge_attribute as array' do
+    related_model1 = double('Model')
+    related_model2 = double('Model')
+    allow(edge_attribute).to receive(:get_value).with(model).and_return([related_model1, related_model2])
+
+    expect(subject.related_models).to eq [related_model1, related_model2]
+  end
+
+  describe 'building of edges' do
+    it 'should have a list of edges all with empty attributes'
+    it 'should use the Vertex#id for edge identification'
+  end
+
+  describe 'building of vertices' do
+    let(:from_vertex) { double('Vertex') }
+    let(:to_vertex) { double('Vertex') }
+    let(:query_result) { double('Query') }
+
+    before do
+      allow(query_result).to receive(:key)
+      allow(query_result).to receive(:map).and_yield(query_result)
+
+      allow(subject).to receive(:model_to_document).with(from_model).and_return(from_document)
+      allow(subject).to receive(:model_to_document).with(to_model).and_return(to_document)
+
+      allow(Guacamole::Transaction::Vertex).to receive(:new)
+                                                .with(from_model, from_collection_name, from_document)
+                                                .and_return(from_vertex)
+      allow(Guacamole::Transaction::Vertex).to receive(:new)
+                                                .with(to_model, to_collection_name, to_document)
+                                                .and_return(to_vertex)
+    end
+
+    context 'model is the :from part of the edge' do
+      let(:from_model) { model }
+      let(:to_model) { double('ToModel') }
+
+      before do
+        allow(from_model_class).to receive(:===).with(model).and_return(true)
+        allow(to_model_class).to receive(:===).with(model).and_return(false)
+        allow(subject).to receive(:related_models).and_return([to_model])
+      end
+
+      it 'should transform model to the :from vertices' do
+        expect(subject.from_vertices).to eq [from_vertex]
+      end
+
+      it 'should transform the related models to :to vertices' do
+        expect(subject.to_vertices).to eq [to_vertex]
+      end
+
+      it 'should select the old edge keys based on :from for the model' do
+        expect(edge_collection).to receive(:by_example).with(_from: model_id).and_return(query_result)
+
+        subject.old_edge_keys
+      end
+    end
+
+    context 'model is the :to part of the edge' do
+      let(:from_model) { double('FromModel') }
+      let(:to_model) { model }
+
+      before do
+        allow(from_model_class).to receive(:===).with(model).and_return(false)
+        allow(to_model_class).to receive(:===).with(model).and_return(true)
+        allow(subject).to receive(:related_models).and_return([from_model])
+      end
+
+      it 'should transform model to the :to vertices' do
+        expect(subject.to_vertices).to eq [to_vertex]
+      end
+
+      it 'should transform the related models to :from vertices' do
+        expect(subject.from_vertices).to eq [from_vertex]
+      end
+
+      it 'should select the old edges based on :to for the model' do
+        expect(edge_collection).to receive(:by_example).with(_to: model_id).and_return(query_result)
+
+        subject.old_edge_keys
+      end
+    end
   end
 end
 
@@ -115,13 +296,13 @@ describe Guacamole::Transaction do
     context 'with edges present' do
       let(:edge_attribute)  { double('EdgeAttribute') }
       let(:edge_attributes) { [edge_attribute] }
-      let(:tx_edge_collection) { instance_double('Guacamole::Transaction::TxEdgeCollection') }
+      let(:tx_edge_collection) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
       let(:tx_edge_collection_as_hash) { double('Hash') }
 
       before do
         allow(mapper).to receive(:edge_attributes).and_return(edge_attributes)
         allow(tx_edge_collection).to receive(:to_h).and_return(tx_edge_collection_as_hash)
-        allow(Guacamole::Transaction::TxEdgeCollection).to receive(:new).with(edge_attribute, model).and_return(tx_edge_collection)
+        allow(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(edge_attribute, model).and_return(tx_edge_collection)
       end
 
       its(:edges_present?) { should eq true }

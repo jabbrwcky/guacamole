@@ -12,84 +12,100 @@ module Guacamole
     # A simple structure to build the vertex information we need to pass to the
     # transaction code.
     class Vertex < Struct.new(:model, :collection, :document)
+      # The key of the wrapped model
+      #
+      # @return [String] The key of the model
+      def key
+        model.key
+      end
+
+      # The id of the wrapped model
+      #
+      # If the model was never saved and thus don't have an id yet we will
+      # return Model#object_id instead.
+      #
+      # @return [String] The id of the model
+      def id
+        model._id || model.object_id
+      end
+
       # Creates a hash to be used in the transaction
       #
       # @return [Hash] A hash with the required information to be passed to the database
-      def to_h
+      def as_json
         {
          object_id: model.object_id,
          collection: collection,
          document: document,
-         _key: model.key,
-         _id: model._id
+         _key: key,
+         _id: id
         }
       end
     end
 
-    # This class smells of :reek:TooManyInstanceVariables
-    class TxEdgeCollection
-      attr_reader :edge_collection, :model, :ea, :to_models, :from_models, :old_edges
+    class TargetStatesBuilder
+    end
 
-      def initialize(ea, model)
-        @ea              = ea
-        @model           = model
-        @edge_collection = EdgeCollection.for(ea.edge_class)
+    class VertexTargetState
+    end
 
-        init
+    class SubGraphTargetState
+      attr_reader :start_model, :edge_attribute
+
+      def initialize(edge_attribute, model)
+        @edge_attribute = edge_attribute
+        @start_model    = model
       end
 
-      # This method smells of :reek:DuplicateMethodCall
-      # This method smells of :reek:TooManyStatements
-      def init
-        case model
-        when ea.edge_class.from_collection.model_class
-          @from_models = [model]
-          @to_models   = [ea.get_value(model)].compact.flatten
-          @old_edges   = edge_collection.by_example(_from: model._id).map(&:key)
-        when ea.edge_class.to_collection.model_class
-          @to_models   = [model]
-          @from_models = [ea.get_value(model)].compact.flatten
-          @old_edges   = edge_collection.by_example(_to: model._id).map(&:key)
-        else
-          raise RuntimeError
+      def edge_class
+        edge_attribute.edge_class
+      end
+
+      def edge_collection
+        EdgeCollection.for(edge_class)
+      end
+
+      def mapper_for_model(model)
+        edge_collection.mapper_for_start(model)
+      end
+
+      def model_to_document(model)
+        mapper_for_model(model).model_to_document(model)
+      end
+
+      def related_models
+        [edge_attribute.get_value(start_model)].compact.flatten
+      end
+
+      def old_edge_keys
+        case start_model
+        when edge_class.from_collection.model_class
+          edge_collection.by_example(_from: start_model._id).map(&:key)
+        when edge_class.to_collection.model_class
+          edge_collection.by_example(_to: start_model._id).map(&:key)
         end
       end
 
-      # This method smells of :reek:UncommunicativeVariableName
-      def select_mapper
-        ->(m) { edge_collection.mapper_for_start(m) }
-      end
-
-      # This method smells of :reek:UncommunicativeVariableName
       def from_vertices
-        from_models.map do |m|
-          {
-            object_id: m.object_id,
-            collection: edge_collection.edge_class.from_collection.collection_name,
-            document: select_mapper.call(m).model_to_document(m),
-            _key: m.key,
-            _id: m._id
-          }
+        case start_model
+        when edge_class.from_collection.model_class
+          [Vertex.new(start_model, edge_class.from_collection.collection_name, model_to_document(start_model))]
+        when edge_class.to_collection.model_class
+          related_models.map { |from_model| Vertex.new(from_model, edge_class.from_collection.collection_name, model_to_document(from_model)) }
         end
       end
 
-      # This method smells of :reek:UncommunicativeVariableName
       def to_vertices
-        to_models.map do |m|
-          {
-            object_id: m.object_id,
-            collection: edge_collection.edge_class.to_collection.collection_name,
-            document: select_mapper.call(m).model_to_document(m),
-            _key: m.key,
-            _id: m._id
-          }
+        case start_model
+        when edge_class.from_collection.model_class
+          related_models.map { |to_model| Vertex.new(to_model, edge_class.to_collection.collection_name, model_to_document(to_model)) }
+        when edge_class.to_collection.model_class
+           [Vertex.new(start_model, edge_class.to_collection.collection_name, model_to_document(start_model))]
         end
       end
 
-      # This method smells of :reek:NilCheck
-      # This method smells of :reek:UncommunicativeVariableName
       def to_vertices_with_only_existing_documents
-        to_vertices.select { |v| v[:_key].nil?  }
+        to_vertices.reject(&:key)
       end
 
       def edges
@@ -133,7 +149,7 @@ module Guacamole
 
     def full_edge_collections
       @full_edge_collections ||= mapper.edge_attributes.each_with_object([]) do |ea, edge_collections|
-        edge_collections << TxEdgeCollection.new(ea, model).to_h
+        edge_collections << SubGraphTargetState.new(ea, model).to_h
       end
     end
 
@@ -154,11 +170,11 @@ module Guacamole
     end
 
     def write_collections
-      edge_collections.map do |ec|
+      edge_collections.flat_map do |ec|
         [ec[:name]] +
           ec[:fromVertices].map { |fv| fv[:collection] } +
           ec[:toVertices].map { |tv| tv[:collection] }
-      end.flatten.uniq.compact
+      end.uniq.compact
     end
 
     def read_collections
