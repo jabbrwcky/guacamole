@@ -4,9 +4,6 @@ require 'ashikawa-core'
 
 module Guacamole
   class Transaction
-    extend Forwardable
-    def_delegators :collection, :mapper, :database
-
     attr_reader :collection, :model
 
     # A simple structure to build the vertex information we need to pass to the
@@ -44,15 +41,50 @@ module Guacamole
     end
 
     class TargetStatesBuilder
+      class << self
+        def build(model, collection)
+          if collection.mapper.edge_attributes.empty?
+            [VertexTargetState.new(model, collection)]
+          else
+            collection.mapper.edge_attributes.map { |edge_attribute| SubGraphTargetState.new(model, edge_attribute) }
+          end
+        end
+      end
     end
 
     class VertexTargetState
+      attr_reader :model, :collection
+
+      def initialize(model, collection)
+        @model      = model
+        @collection = collection
+      end
+
+      def vertex
+        Vertex.new(model,
+                   collection.collection_name,
+                   collection.mapper.model_to_document(model))
+      end
+
+      def edge_collection_name
+        nil
+      end
+
+      def as_json
+        {
+         name: nil,
+         fromVertices: [vertex],
+         toVertices: [],
+         edges: [],
+         oldEdges: []
+        }
+      end
     end
 
     class SubGraphTargetState
       attr_reader :start_model, :edge_attribute
 
-      def initialize(edge_attribute, model)
+      def initialize(model, edge_attribute)
         @edge_attribute = edge_attribute
         @start_model    = model
       end
@@ -99,7 +131,7 @@ module Guacamole
         end
       end
 
-      def to_vertices
+      def all_to_vertices
         case start_model
         when edge_class.from_collection.model_class
           related_models.map { |to_model| Vertex.new(to_model, edge_class.to_collection.collection_name, model_to_document(to_model)) }
@@ -108,19 +140,19 @@ module Guacamole
         end
       end
 
-      def to_vertices_with_only_existing_documents
-        to_vertices.reject(&:key)
+      def to_vertices
+        all_to_vertices.reject(&:key)
       end
 
       def edges
         from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
-          {_from: from_vertex.id, _to: to_vertex.id, attributes: {} }
+          { _from: from_vertex.id, _to: to_vertex.id, attributes: {} }
         end
       end
 
       def as_json
         {
-          name: edge_collection.collection_name,
+          name: edge_collection_name,
           fromVertices: from_vertices,
           toVertices: to_vertices_with_only_existing_documents,
           edges: edges,
@@ -138,40 +170,17 @@ module Guacamole
     def initialize(options)
       @collection = options[:collection]
       @model      = options[:model]
-      @collection.connection # Init the connection
-    end
-
-    def edges_present?
-      !mapper.edge_attributes.empty?
-    end
-
-    def full_edge_collections
-      @full_edge_collections ||= mapper.edge_attributes.each_with_object([]) do |ea, edge_collections|
-        edge_collections << SubGraphTargetState.new(ea, model)
-      end
-    end
-
-    def simple_edge_collections
-      [
-        {
-          name: nil,
-          fromVertices: [Vertex.new(model, collection.collection_name, mapper.model_to_document(model)).to_h],
-          toVertices: [],
-          edges: [],
-          oldEdges: []
-        }
-      ]
+      init_connection_to_database
     end
 
     def edge_collections
-      edges_present? ? full_edge_collections : simple_edge_collections
+      TargetStatesBuilder.build(model, collection)
     end
 
     def write_collections
-      edge_collections.flat_map do |ec|
-        [ec[:name]] +
-          ec[:fromVertices].map { |fv| fv[:collection] } +
-          ec[:toVertices].map { |tv| tv[:collection] }
+      edge_collections.flat_map do |target_state|
+        [target_state.edge_collection_name] +
+          (target_state.from_vertices + target_state.to_vertices).map(&:collection)
       end.uniq.compact
     end
 
@@ -195,8 +204,6 @@ module Guacamole
       File.read(Guacamole.configuration.shared_path.join('transaction.js'))
     end
 
-    private
-
     def transaction
       transaction = database.create_transaction(transaction_code,
                                                 write: write_collections,
@@ -204,6 +211,20 @@ module Guacamole
       transaction.wait_for_sync = true
 
       transaction
+    end
+
+    private
+
+    def database
+      collection.database
+    end
+
+    # Requests the collection from the database
+    #
+    # If the collection was not existing before this will create it.
+    # If the collection already exists, this will be a no-op
+    def init_connection_to_database
+      @collection.connection
     end
   end
 end

@@ -45,11 +45,72 @@ describe Guacamole::Transaction::Vertex do
 end
 
 describe Guacamole::Transaction::TargetStatesBuilder do
-  subject { Guacamole::Transaction::TragetStatesBuilder }
+  let(:model) { double('Model') }
+  let(:mapper) { double('Mapper') }
+  let(:collection) { double('Collection') }
+  let(:edge_attributes) { [] }
+
+  subject { Guacamole::Transaction::TargetStatesBuilder }
+
+  before do
+    allow(mapper).to receive(:edge_attributes).and_return(edge_attributes)
+    allow(collection).to receive(:mapper).and_return(mapper)
+  end
+
+  describe 'build concrete TargetState instances' do
+    it 'should always return an array of TargetState instances' do
+      expect(subject.build(model, collection)).to be_an Array
+    end
+
+    context 'with edge attributes' do
+      let(:this_edge_attribute) { double('EdgeAttribute') }
+      let(:that_edge_attribute) { double('EdgeAttribute') }
+      let(:edge_attributes) { [this_edge_attribute, that_edge_attribute] }
+
+      it 'should create a TargetState instance for every edge attribute of the model' do
+        expect(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(model, this_edge_attribute)
+        expect(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(model, that_edge_attribute)
+
+        subject.build(model, collection)
+      end
+    end
+
+    context 'without edge attributes' do
+      it 'should build a VertexTargetState instance' do
+        expect(Guacamole::Transaction::VertexTargetState).to receive(:new).with(model, collection)
+
+        subject.build(model, collection)
+      end
+    end
+  end
 end
 
 describe Guacamole::Transaction::VertexTargetState do
-  
+  let(:model) { double('Model') }
+  let(:collection) { double('Collection') }
+  let(:collection_name) { double('CollectionName') }
+  let(:document) { double('Document') }
+  let(:mapper) { double('Mapper') }
+  let(:vertex) { double('Vertex') }
+
+  subject { Guacamole::Transaction::VertexTargetState.new(model, collection) }
+
+  before do
+    allow(collection).to receive(:collection_name).and_return(collection_name)
+    allow(collection).to receive(:mapper).and_return(mapper)
+    allow(mapper).to receive(:model_to_document).with(model).and_return(document)
+    allow(Guacamole::Transaction::Vertex).to receive(:new).with(model, collection_name, document).and_return(vertex)
+  end
+
+  its(:edge_collection_name) { should be_nil }
+
+  it 'should have a reasonable JSON representation' do
+    expect(subject.as_json).to eq({
+                                   name: nil,
+                                   fromVertices: [vertex],
+                                   toVertices: [], edges: [], oldEdges: []
+                                  })
+  end
 end
 
 describe Guacamole::Transaction::SubGraphTargetState do
@@ -73,7 +134,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
   let(:from_document) { double('Document') }
   let(:to_document) { double('Document') }
 
-  subject { Guacamole::Transaction::SubGraphTargetState.new(edge_attribute, model) }
+  subject { Guacamole::Transaction::SubGraphTargetState.new(model, edge_attribute) }
 
   before do
     stub_const('Guacamole::EdgeCollection', edge_collection_class)
@@ -103,9 +164,9 @@ describe Guacamole::Transaction::SubGraphTargetState do
     vertex_with_key    = double('Vertex', key: double)
     vertex_without_key = double('Vertex', key: nil)
 
-    allow(subject).to receive(:to_vertices).and_return([vertex_with_key, vertex_without_key])
+    allow(subject).to receive(:all_to_vertices).and_return([vertex_with_key, vertex_without_key])
 
-    expect(subject.to_vertices_with_only_existing_documents).to eq [vertex_without_key]
+    expect(subject.to_vertices).to eq [vertex_without_key]
   end
 
   it 'should have a representation suitable for JSON serialization' do
@@ -219,7 +280,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       end
 
       it 'should transform the related models to :to vertices' do
-        expect(subject.to_vertices).to eq [to_vertex]
+        expect(subject.all_to_vertices).to eq [to_vertex]
       end
 
       it 'should select the old edge keys based on :from for the model' do
@@ -240,7 +301,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       end
 
       it 'should transform model to the :to vertices' do
-        expect(subject.to_vertices).to eq [to_vertex]
+        expect(subject.all_to_vertices).to eq [to_vertex]
       end
 
       it 'should transform the related models to :from vertices' do
@@ -260,14 +321,12 @@ describe Guacamole::Transaction do
   let(:collection) { double('Collection') }
   let(:model) { double('Model') }
   let(:database) { double('Database') }
-  let(:mapper) { double('Mapper') }
   let(:init_options) { { collection: collection, model: model } }
 
   subject { Guacamole::Transaction.new(init_options) }
 
   before do
     allow(collection).to receive(:connection)
-    allow(collection).to receive(:mapper).and_return(mapper)
     allow(collection).to receive(:database).and_return(database)
   end
 
@@ -287,7 +346,6 @@ describe Guacamole::Transaction do
   describe 'initialization' do
     its(:collection) { should eq collection }
     its(:model)      { should eq model }
-    its(:mapper)     { should eq mapper }
     its(:database)   { should eq database }
 
     it 'should init the connection to the database' do
@@ -298,67 +356,94 @@ describe Guacamole::Transaction do
   end
 
   describe 'edge_collections for the transaction' do
-    context 'with no edges present' do
-      let(:vertex) { double('Vertex') }
-      let(:collection_name) { 'awesome_collection' }
-      let(:document) { double('Document') }
-      let(:vertex) { double('Vertex') }
+    it 'should pass model and collection to TargetStatesBuilder to create the edge_collections' do
+      expect(Guacamole::Transaction::TargetStatesBuilder).to receive(:build).with(model, collection)
 
-      before do
-        allow(collection).to receive(:collection_name).and_return(collection_name)
-        allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-        allow(mapper).to receive(:edge_attributes).and_return([])
-        allow(Guacamole::Transaction::Vertex).to receive(:new).and_return(vertex)
-        allow(vertex).to receive(:to_h).and_return(vertex)
-      end
+      subject.edge_collections
+    end
+  end
 
-      its(:edges_present?) { should eq false }
+  describe 'determine write and read collections for the transaction' do
+    let(:edge_collection) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
+    let(:from_vertex) { instance_double('Guacamole::Transaction::Vertex') }
+    let(:to_vertex) { instance_double('Guacamole::Transaction::Vertex') }
 
-      it 'should build a simple edge collection with just the model to be used if no edges are defined' do
-        simple_edge_collection = {
-                                  name: nil,
-                                  fromVertices: [vertex],
-                                  toVertices: [],
-                                  edges: [],
-                                  oldEdges: []
-                                 }
+    let(:edge_collection_name) { double('EdgeCollectionName') }
+    let(:from_vertex_collection_name) { double('FromName') }
+    let(:to_vertex_collection_name) { double('ToName') }
 
-        edge_collection = subject.simple_edge_collections
-        expect(edge_collection).to eq [simple_edge_collection]
-      end
-
-      it 'should return the simple collections' do
-        simple_edge_collections = double('SimpleEdgeCollections')
-        allow(subject).to receive(:edges_present?).and_return(false)
-        allow(subject).to receive(:simple_edge_collections).and_return(simple_edge_collections)
-
-        expect(subject.edge_collections).to eq simple_edge_collections
-      end
+    before do
+      allow(subject).to receive(:edge_collections).and_return([edge_collection])
+      allow(edge_collection).to receive(:edge_collection_name).and_return(edge_collection_name)
+      allow(edge_collection).to receive(:from_vertices).and_return([from_vertex])
+      allow(edge_collection).to receive(:to_vertices).and_return([to_vertex])
+      allow(from_vertex).to receive(:collection).and_return(from_vertex_collection_name)
+      allow(to_vertex).to receive(:collection).and_return(to_vertex_collection_name)
     end
 
-    context 'with edges present' do
-      let(:edge_attribute)  { double('EdgeAttribute') }
-      let(:edge_attributes) { [edge_attribute] }
-      let(:sub_graph_state) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
+    it 'should collect all edge_collection and vertex collection names of all target states as write collection' do
+      expect(subject.write_collections).to eq [edge_collection_name, from_vertex_collection_name, to_vertex_collection_name]
+    end
 
-      before do
-        allow(mapper).to receive(:edge_attributes).and_return(edge_attributes)
-        allow(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(edge_attribute, model).and_return(sub_graph_state)
-      end
+    it 'should have the same read collection as the write collections' do
+      expect(subject.read_collections).to eq subject.write_collections
+    end
+  end
 
-      its(:edges_present?) { should eq true }
+  describe 'send the transaction to the database' do
+    let(:graph) { double('Graph', name: 'graph') }
+    let(:shared_path) { double('Path') }
+    let(:config) { double('Config', graph: graph, shared_path: shared_path) }
 
-      it 'should prepare each edge_attribute in the mapper' do
-        expect(subject.full_edge_collections).to eq [sub_graph_state]
-      end
+    before do
+      allow(Guacamole).to receive(:configuration).and_return(config)
+    end
 
-      it 'should return the full collections' do
-        full_edge_collections = double('FullEdgeCollections')
-        allow(subject).to receive(:edges_present?).and_return(true)
-        allow(subject).to receive(:full_edge_collections).and_return(full_edge_collections)
+    it 'should create the parameters for the transaction' do
+      edge_collections = double('EdgeCollections')
+      allow(subject).to receive(:edge_collections).and_return(edge_collections)
 
-        expect(subject.edge_collections).to eq full_edge_collections
-      end
+      expect(subject.transaction_params).to eq({
+                                                edgeCollections: edge_collections,
+                                                graph: graph.name,
+                                                log_level: 'debug'
+                                               })
+    end
+
+    it 'should prepare the transaction on the database' do
+      transaction_code = double('TransactionCode')
+      write_collections = double('WriteCollections')
+      read_collections = double('ReadCollections')
+      allow(subject).to receive(:transaction_code).and_return(transaction_code)
+      allow(subject).to receive(:write_collections).and_return(write_collections)
+      allow(subject).to receive(:read_collections).and_return(read_collections)
+
+      transaction_options = { write: write_collections, read: read_collections }
+
+      db_transaction = double('DBTransaction')
+      allow(database).to receive(:create_transaction).with(transaction_code, transaction_options).and_return(db_transaction)
+      allow(db_transaction).to receive(:wait_for_sync=).with(true)
+
+      subject.transaction
+    end
+
+    it 'should load the transaction code' do
+      path_to_transaction = double('TransactionCode')
+      allow(shared_path).to receive(:join).with('transaction.js').and_return(path_to_transaction)
+      expect(File).to receive(:read).with(path_to_transaction)
+
+      subject.transaction_code
+    end
+
+    it 'should execute the transaction with the parameters' do
+      transaction        = double('DBTransaction')
+      transaction_params = double('TransactionParams')
+
+      allow(subject).to receive(:transaction).and_return(transaction)
+      allow(subject).to receive(:transaction_params).and_return(transaction_params)
+      expect(transaction).to receive(:execute).with(transaction_params)
+
+      subject.execute_transaction
     end
   end
 end
