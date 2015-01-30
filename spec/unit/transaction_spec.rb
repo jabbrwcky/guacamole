@@ -68,6 +68,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
   let(:edge_class) { double('EdgeClass') }
   let(:edge_collection_class) { double('EdgeCollectionClass') }
   let(:edge_collection) { double('EdgeCollection') }
+  let(:edge_collection_name) { double('EdgeCollectionName') }
 
   let(:from_document) { double('Document') }
   let(:to_document) { double('Document') }
@@ -89,11 +90,13 @@ describe Guacamole::Transaction::SubGraphTargetState do
 
     allow(edge_attribute).to receive(:edge_class).and_return(edge_class)
     allow(edge_collection_class).to receive(:for).and_return(edge_collection)
+    allow(edge_collection).to receive(:collection_name).and_return(edge_collection_name)
   end
 
   its(:start_model) { should eq model }
   its(:edge_attribute) { should eq edge_attribute }
   its(:edge_collection) { should eq edge_collection }
+  its(:edge_collection_name) { should eq edge_collection_name }
   its(:edge_class) { should eq edge_class }
 
   it 'should build a list of :to vertices with existing documents' do
@@ -105,7 +108,22 @@ describe Guacamole::Transaction::SubGraphTargetState do
     expect(subject.to_vertices_with_only_existing_documents).to eq [vertex_without_key]
   end
 
-  it 'should have a representation suitable for JSON serialization'
+  it 'should have a representation suitable for JSON serialization' do
+    allow(subject).to receive(:from_vertices).and_return(from_vertices = double)
+    allow(subject).to receive(:to_vertices_with_only_existing_documents).and_return(to_vertices = double)
+    allow(subject).to receive(:edges).and_return(edges = double)
+    allow(subject).to receive(:old_edge_keys).and_return(old_edge_keys = double)
+
+    state_as_json = {
+      name: edge_collection_name,
+      fromVertices: from_vertices,
+      toVertices: to_vertices,
+      edges: edges,
+      oldEdges: old_edge_keys
+    }
+
+    expect(subject.as_json).to eq state_as_json
+  end
 
   it 'should select the responsible mapper for a given model' do
     expect(edge_collection).to receive(:mapper_for_start).with(model)
@@ -321,19 +339,17 @@ describe Guacamole::Transaction do
     context 'with edges present' do
       let(:edge_attribute)  { double('EdgeAttribute') }
       let(:edge_attributes) { [edge_attribute] }
-      let(:tx_edge_collection) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
-      let(:tx_edge_collection_as_hash) { double('Hash') }
+      let(:sub_graph_state) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
 
       before do
         allow(mapper).to receive(:edge_attributes).and_return(edge_attributes)
-        allow(tx_edge_collection).to receive(:to_h).and_return(tx_edge_collection_as_hash)
-        allow(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(edge_attribute, model).and_return(tx_edge_collection)
+        allow(Guacamole::Transaction::SubGraphTargetState).to receive(:new).with(edge_attribute, model).and_return(sub_graph_state)
       end
 
       its(:edges_present?) { should eq true }
 
       it 'should prepare each edge_attribute in the mapper' do
-        expect(subject.full_edge_collections).to eq [tx_edge_collection_as_hash]
+        expect(subject.full_edge_collections).to eq [sub_graph_state]
       end
 
       it 'should return the full collections' do

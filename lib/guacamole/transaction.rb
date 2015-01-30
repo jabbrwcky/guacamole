@@ -65,6 +65,10 @@ module Guacamole
         EdgeCollection.for(edge_class)
       end
 
+      def edge_collection_name
+        edge_collection.collection_name
+      end
+
       def mapper_for_model(model)
         edge_collection.mapper_for_start(model)
       end
@@ -109,24 +113,18 @@ module Guacamole
       end
 
       def edges
-        from_vertices.each_with_object([]) do |from_vertex, edges|
-          to_vertices.each do |to_vertex|
-            edges << {
-              _from: from_vertex[:_id] || from_vertex[:object_id],
-              _to: to_vertex[:_id] || to_vertex[:object_id],
-              attributes: {}
-            }
-          end
+        from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
+          {_from: from_vertex.id, _to: to_vertex.id, attributes: {} }
         end
       end
 
-      def to_h
+      def as_json
         {
           name: edge_collection.collection_name,
           fromVertices: from_vertices,
           toVertices: to_vertices_with_only_existing_documents,
           edges: edges,
-          oldEdges: old_edges
+          oldEdges: old_edge_keys
         }
       end
     end
@@ -149,7 +147,7 @@ module Guacamole
 
     def full_edge_collections
       @full_edge_collections ||= mapper.edge_attributes.each_with_object([]) do |ea, edge_collections|
-        edge_collections << SubGraphTargetState.new(ea, model).to_h
+        edge_collections << SubGraphTargetState.new(ea, model)
       end
     end
 
