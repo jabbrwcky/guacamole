@@ -137,8 +137,33 @@ describe Guacamole::Transaction::SubGraphTargetState do
   end
 
   describe 'building of edges' do
-    it 'should have a list of edges all with empty attributes'
-    it 'should use the Vertex#id for edge identification'
+    let(:from_vertex1) { double('Vertex', id: '42') }
+    let(:from_vertex2) { double('Vertex', id: '23') }
+    let(:to_vertex) { double('Vertex', id: '101') }
+
+    before do
+      allow(subject).to receive(:from_vertices).and_return([from_vertex1, from_vertex2])
+      allow(subject).to receive(:to_vertices).and_return([to_vertex])
+    end
+
+    it 'should build a list of edges to connect all from vertices to the to vertices' do
+      pattern = [
+                 {
+                  _from: from_vertex1.id,
+                  _to: to_vertex.id
+                 }.ignore_extra_keys!,
+                 {
+                  _from: from_vertex2.id,
+                  _to: to_vertex.id
+                 }.ignore_extra_keys!
+                ]
+
+      expect(subject.edges).to match_json_expression(pattern)
+    end
+
+    it 'should have a list of edges all with empty attributes' do
+      expect(subject.edges).to all(include(attributes: {}))
+    end
   end
 
   describe 'building of vertices' do

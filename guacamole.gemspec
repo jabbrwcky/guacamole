@@ -33,6 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'guard-rspec', '~> 4.2.10'
   spec.add_development_dependency 'inch', '~> 0.4.6'
   spec.add_development_dependency 'logging', '~> 1.8.1'
+  spec.add_development_dependency 'json_expressions', '~> 0.8.3'
   spec.add_development_dependency 'pry', '~> 0.9.12'
   spec.add_development_dependency 'rake', '~> 10.3.2'
   spec.add_development_dependency 'reek', '~> 1.3.7'

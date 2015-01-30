@@ -8,6 +8,7 @@ if ENV['CODECLIMATE_REPO_TOKEN']
 end
 
 require 'rspec/its'
+require 'json_expressions/rspec'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |c|
