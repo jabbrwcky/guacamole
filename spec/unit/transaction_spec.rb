@@ -20,15 +20,16 @@ describe Guacamole::Transaction::Vertex do
   end
 
   its(:key) { should eq model_key }
+  its(:id) { should eq model_id }
 
   context 'with new vertex' do
     let(:model_id) { nil }
 
-    its(:id) { should be model_object_id }
+    its(:id_for_edge) { should eq model_object_id }
   end
 
   context 'with existing vertex' do
-    its(:id) { should eq model_id }
+    its(:id_for_edge) { should eq model_id }
   end
 
   it 'should return a hash to be used in the transaction code' do
@@ -103,11 +104,17 @@ describe Guacamole::Transaction::VertexTargetState do
   end
 
   its(:edge_collection_name) { should be_nil }
+  its(:to_vertices) { should eq [] }
+  its(:from_vertices) { should eq [vertex] }
 
   it 'should have a reasonable JSON representation' do
+    from_vertices_as_json = double('FromVerticesAsJSON')
+    allow(subject).to receive(:from_vertices).and_return(from_vertices = double)
+    allow(from_vertices).to receive(:as_json).and_return(from_vertices_as_json)
+
     expect(subject.as_json).to eq({
                                    name: nil,
-                                   fromVertices: [vertex],
+                                   fromVertices: from_vertices_as_json,
                                    toVertices: [], edges: [], oldEdges: []
                                   })
   end
@@ -170,8 +177,11 @@ describe Guacamole::Transaction::SubGraphTargetState do
   end
 
   it 'should have a representation suitable for JSON serialization' do
-    allow(subject).to receive(:from_vertices).and_return(from_vertices = double)
-    allow(subject).to receive(:to_vertices_with_only_existing_documents).and_return(to_vertices = double)
+    from_vertices = double('FromVertices')
+    to_vertices   = double('ToVertices')
+
+    allow(subject).to receive(:from_vertices).and_return(double(as_json: from_vertices))
+    allow(subject).to receive(:to_vertices).and_return(double(as_json: to_vertices))
     allow(subject).to receive(:edges).and_return(edges = double)
     allow(subject).to receive(:old_edge_keys).and_return(old_edge_keys = double)
 
@@ -216,24 +226,24 @@ describe Guacamole::Transaction::SubGraphTargetState do
   end
 
   describe 'building of edges' do
-    let(:from_vertex1) { double('Vertex', id: '42') }
-    let(:from_vertex2) { double('Vertex', id: '23') }
-    let(:to_vertex) { double('Vertex', id: '101') }
+    let(:from_vertex1) { double('Vertex', id_for_edge: '42') }
+    let(:from_vertex2) { double('Vertex', id_for_edge: '23') }
+    let(:to_vertex) { double('Vertex', id_for_edge: '101') }
 
     before do
       allow(subject).to receive(:from_vertices).and_return([from_vertex1, from_vertex2])
-      allow(subject).to receive(:to_vertices).and_return([to_vertex])
+      allow(subject).to receive(:all_to_vertices).and_return([to_vertex])
     end
 
     it 'should build a list of edges to connect all from vertices to the to vertices' do
       pattern = [
                  {
-                  _from: from_vertex1.id,
-                  _to: to_vertex.id
+                  _from: from_vertex1.id_for_edge,
+                  _to: to_vertex.id_for_edge
                  }.ignore_extra_keys!,
                  {
-                  _from: from_vertex2.id,
-                  _to: to_vertex.id
+                  _from: from_vertex2.id_for_edge,
+                  _to: to_vertex.id_for_edge
                  }.ignore_extra_keys!
                 ]
 
@@ -441,6 +451,7 @@ describe Guacamole::Transaction do
 
       allow(subject).to receive(:transaction).and_return(transaction)
       allow(subject).to receive(:transaction_params).and_return(transaction_params)
+      allow(transaction_params).to receive(:as_json).and_return(transaction_params)
       expect(transaction).to receive(:execute).with(transaction_params)
 
       subject.execute_transaction

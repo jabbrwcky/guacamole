@@ -31,11 +31,18 @@ module Guacamole
 
       # The id of the wrapped model
       #
+      # @return [String] The id of the model
+      def id
+        model._id
+      end
+
+      # An ID suitable for resolving the edges in the transaction
+      #
       # If the model was never saved and thus don't have an id yet we will
       # return Model#object_id instead.
       #
-      # @return [String] The id of the model
-      def id
+      # @return [String] The ID suitable for persisting the edges
+      def id_for_edge
         model._id || model.object_id
       end
 
@@ -114,6 +121,20 @@ module Guacamole
         nil
       end
 
+      # Returns the vertex wrapped in an Array
+      #
+      # @return [Array<Vertex>] The vertex to persist
+      def from_vertices
+        [vertex]
+      end
+
+      # Return an empty Array to comply to the interface
+      #
+      # @return [Array] An empty array
+      def to_vertices
+        []
+      end
+
       # Creates a hash to be used in JSON serialization for the transaction
       #
       # @param args [Object] Any number of arguments to match the interface
@@ -121,8 +142,8 @@ module Guacamole
       def as_json(*args)
         {
          name: nil,
-         fromVertices: [vertex],
-         toVertices: [],
+         fromVertices: from_vertices.as_json,
+         toVertices: to_vertices,
          edges: [],
          oldEdges: []
         }
@@ -241,8 +262,8 @@ module Guacamole
       #
       # @return [Array<Hash>] A list of hashes representing the edges
       def edges
-        from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
-          { _from: from_vertex.id, _to: to_vertex.id, attributes: {} }
+        from_vertices.product(all_to_vertices).map do |from_vertex, to_vertex|
+          { _from: from_vertex.id_for_edge, _to: to_vertex.id_for_edge, attributes: {} }
         end
       end
 
@@ -253,8 +274,8 @@ module Guacamole
       def as_json(*args)
         {
           name: edge_collection_name,
-          fromVertices: from_vertices,
-          toVertices: to_vertices_with_only_existing_documents,
+          fromVertices: from_vertices.as_json,
+          toVertices: to_vertices.as_json,
           edges: edges,
           oldEdges: old_edge_keys
         }
@@ -318,7 +339,7 @@ module Guacamole
     #
     # @api private
     def execute_transaction
-      transaction.execute(transaction_params)
+      transaction.execute(transaction_params.as_json)
     end
 
     # The JS code of the transaction
