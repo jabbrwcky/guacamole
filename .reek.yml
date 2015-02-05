@@ -24,6 +24,10 @@ DuplicateMethodCall:
   - Guacamole::DocumentModelMapper#model_to_document
   - Guacamole::Configuration#create_database_connection
   - Guacamole::Callbacks::CallbackProxy#run_callbacks
+  - Guacamole::Transaction::SubGraphTargetState#all_to_vertices
+  - Guacamole::Transaction::SubGraphTargetState#from_vertices
+  - Guacamole::Transaction::SubGraphTargetState#old_edge_keys
+  - Guacamole::Transaction::TargetStatesBuilder#build
   max_calls: 1
   allow_calls: []
 FeatureEnvy:
@@ -55,7 +59,8 @@ NilCheck:
   exclude: []
 RepeatedConditional:
   enabled: true
-  exclude: []
+  exclude:
+  - Guacamole::Transaction::SubGraphTargetState
   max_ifs: 2
 TooManyInstanceVariables:
   enabled: true
