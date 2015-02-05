@@ -34,12 +34,12 @@ describe Guacamole::Transaction::Vertex do
 
   it 'should return a hash to be used in the transaction code' do
     vertex_hash = {
-                   object_id: model_object_id,
-                   collection: collection,
-                   document: document,
-                   _key: model_key,
-                   _id: model._id
-                  }
+      object_id: model_object_id,
+      collection: collection,
+      document: document,
+      _key: model_key,
+      _id: model._id
+    }
 
     expect(subject.as_json).to eq vertex_hash
   end
@@ -112,11 +112,9 @@ describe Guacamole::Transaction::VertexTargetState do
     allow(subject).to receive(:from_vertices).and_return(from_vertices = double)
     allow(from_vertices).to receive(:as_json).and_return(from_vertices_as_json)
 
-    expect(subject.as_json).to eq({
-                                   name: nil,
-                                   fromVertices: from_vertices_as_json,
-                                   toVertices: [], edges: [], oldEdges: []
-                                  })
+    expect(subject.as_json).to eq(name: nil,
+                                  fromVertices: from_vertices_as_json,
+                                  toVertices: [], edges: [], oldEdges: [])
   end
 end
 
@@ -237,15 +235,15 @@ describe Guacamole::Transaction::SubGraphTargetState do
 
     it 'should build a list of edges to connect all from vertices to the to vertices' do
       pattern = [
-                 {
-                  _from: from_vertex1.id_for_edge,
-                  _to: to_vertex.id_for_edge
-                 }.ignore_extra_keys!,
-                 {
-                  _from: from_vertex2.id_for_edge,
-                  _to: to_vertex.id_for_edge
-                 }.ignore_extra_keys!
-                ]
+        {
+          _from: from_vertex1.id_for_edge,
+          _to: to_vertex.id_for_edge
+        }.ignore_extra_keys!,
+        {
+          _from: from_vertex2.id_for_edge,
+          _to: to_vertex.id_for_edge
+        }.ignore_extra_keys!
+      ]
 
       expect(subject.edges).to match_json_expression(pattern)
     end
@@ -267,12 +265,12 @@ describe Guacamole::Transaction::SubGraphTargetState do
       allow(subject).to receive(:model_to_document).with(from_model).and_return(from_document)
       allow(subject).to receive(:model_to_document).with(to_model).and_return(to_document)
 
-      allow(Guacamole::Transaction::Vertex).to receive(:new)
-                                                .with(from_model, from_collection_name, from_document)
-                                                .and_return(from_vertex)
-      allow(Guacamole::Transaction::Vertex).to receive(:new)
-                                                .with(to_model, to_collection_name, to_document)
-                                                .and_return(to_vertex)
+      allow(Guacamole::Transaction::Vertex).to receive(:new).
+                                                with(from_model, from_collection_name, from_document).
+                                                and_return(from_vertex)
+      allow(Guacamole::Transaction::Vertex).to receive(:new).
+                                                with(to_model, to_collection_name, to_document).
+                                                and_return(to_vertex)
     end
 
     context 'model is the :from part of the edge' do
@@ -392,7 +390,9 @@ describe Guacamole::Transaction do
     end
 
     it 'should collect all edge_collection and vertex collection names of all target states as write collection' do
-      expect(subject.write_collections).to eq [edge_collection_name, from_vertex_collection_name, to_vertex_collection_name]
+      expect(subject.write_collections).to eq [edge_collection_name,
+                                               from_vertex_collection_name,
+                                               to_vertex_collection_name]
     end
 
     it 'should have the same read collection as the write collections' do
@@ -413,11 +413,9 @@ describe Guacamole::Transaction do
       edge_collections = double('EdgeCollections')
       allow(subject).to receive(:edge_collections).and_return(edge_collections)
 
-      expect(subject.transaction_params).to eq({
-                                                edgeCollections: edge_collections,
-                                                graph: graph.name,
-                                                log_level: 'debug'
-                                               })
+      expect(subject.transaction_params).to eq(edgeCollections: edge_collections,
+                                               graph: graph.name,
+                                               log_level: 'debug')
     end
 
     it 'should prepare the transaction on the database' do
@@ -431,7 +429,9 @@ describe Guacamole::Transaction do
       transaction_options = { write: write_collections, read: read_collections }
 
       db_transaction = double('DBTransaction')
-      allow(database).to receive(:create_transaction).with(transaction_code, transaction_options).and_return(db_transaction)
+      allow(database).to receive(:create_transaction).
+                          with(transaction_code, transaction_options).
+                          and_return(db_transaction)
       allow(db_transaction).to receive(:wait_for_sync=).with(true)
 
       subject.transaction

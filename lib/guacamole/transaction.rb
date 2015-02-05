@@ -7,7 +7,7 @@ module Guacamole
   #
   # This is considered for internal use only. It will only work for persisting vertices and
   # edges between them.
-  # 
+  #
   # @api private
   class Transaction
     # The original collection class to gain access to the mapper and database connection
@@ -48,15 +48,14 @@ module Guacamole
 
       # Creates a hash to be used in JSON serialization for the transaction
       #
-      # @param args [Object] Any number of arguments to match the interface
       # @return [Hash] A hash with the required information to be passed to the database
-      def as_json(*args)
+      def as_json(*)
         {
-         object_id: model.object_id,
-         collection: collection,
-         document: document,
-         _key: key,
-         _id: id
+          object_id: model.object_id,
+          collection: collection,
+          document: document,
+          _key: key,
+          _id: id
         }
       end
     end
@@ -71,7 +70,8 @@ module Guacamole
         #
         # @param model [Model] The model to persist
         # @param collection [Collection] The original collection initiating this call
-        # @return [VertexTargetState, SubGraphTargetState] Either a VertexTargetState instance or a SubGraphTargetState instance
+        # @return [VertexTargetState, SubGraphTargetState] Either a VertexTargetState instance
+        #                                                  or a SubGraphTargetState instance
         def build(model, collection)
           if collection.mapper.edge_attributes.empty?
             [VertexTargetState.new(model, collection)]
@@ -137,15 +137,14 @@ module Guacamole
 
       # Creates a hash to be used in JSON serialization for the transaction
       #
-      # @param args [Object] Any number of arguments to match the interface
       # @return [Hash] A hash with the required information to be passed to the database
-      def as_json(*args)
+      def as_json(*)
         {
-         name: nil,
-         fromVertices: from_vertices.as_json,
-         toVertices: to_vertices,
-         edges: [],
-         oldEdges: []
+          name: nil,
+          fromVertices: from_vertices.as_json,
+          toVertices: to_vertices,
+          edges: [],
+          oldEdges: []
         }
       end
     end
@@ -235,7 +234,9 @@ module Guacamole
         when edge_class.from_collection.model_class
           [Vertex.new(start_model, edge_class.from_collection.collection_name, model_to_document(start_model))]
         when edge_class.to_collection.model_class
-          related_models.map { |from_model| Vertex.new(from_model, edge_class.from_collection.collection_name, model_to_document(from_model)) }
+          related_models.map do |from_model|
+            Vertex.new(from_model, edge_class.from_collection.collection_name, model_to_document(from_model))
+          end
         end
       end
 
@@ -245,9 +246,11 @@ module Guacamole
       def all_to_vertices
         case start_model
         when edge_class.from_collection.model_class
-          related_models.map { |to_model| Vertex.new(to_model, edge_class.to_collection.collection_name, model_to_document(to_model)) }
+          related_models.map do |to_model|
+            Vertex.new(to_model, edge_class.to_collection.collection_name, model_to_document(to_model))
+          end
         when edge_class.to_collection.model_class
-           [Vertex.new(start_model, edge_class.to_collection.collection_name, model_to_document(start_model))]
+          [Vertex.new(start_model, edge_class.to_collection.collection_name, model_to_document(start_model))]
         end
       end
 
@@ -269,9 +272,8 @@ module Guacamole
 
       # Creates a hash to be used in JSON serialization for the transaction
       #
-      # @param args [Object] Any number of arguments to match the interface
       # @return [Hash] A hash with the required information to be passed to the database
-      def as_json(*args)
+      def as_json(*)
         {
           name: edge_collection_name,
           fromVertices: from_vertices.as_json,
