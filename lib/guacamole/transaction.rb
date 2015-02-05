@@ -3,11 +3,24 @@
 require 'ashikawa-core'
 
 module Guacamole
+  # Encapsulates a server side transaction.
+  #
+  # This is considered for internal use only. It will only work for persisting vertices and
+  # edges between them.
+  # 
+  # @api private
   class Transaction
-    attr_reader :collection, :model
+    # The original collection class to gain access to the mapper and database connection
+    #
+    # @return [Collection] The original collection
+    attr_reader :collection
 
-    # A simple structure to build the vertex information we need to pass to the
-    # transaction code.
+    # The model to persist and starting point for looking up edges and related vertices
+    #
+    # @return [Model] The model to persist
+    attr_reader :model
+
+    # A simple structure to build the vertex information we need to pass to the transaction code.
     class Vertex < Struct.new(:model, :collection, :document)
       # The key of the wrapped model
       #
@@ -26,10 +39,11 @@ module Guacamole
         model._id || model.object_id
       end
 
-      # Creates a hash to be used in the transaction
+      # Creates a hash to be used in JSON serialization for the transaction
       #
+      # @param args [Object] Any number of arguments to match the interface
       # @return [Hash] A hash with the required information to be passed to the database
-      def as_json
+      def as_json(*args)
         {
          object_id: model.object_id,
          collection: collection,
@@ -40,8 +54,17 @@ module Guacamole
       end
     end
 
+    # Factory class to create the concrete TargetState instances
     class TargetStatesBuilder
       class << self
+        # The factory method
+        #
+        # It will create a SubGraphTargetState instance if there are any relations presents. If not
+        # it will create a VertexTargetState instance.
+        #
+        # @param model [Model] The model to persist
+        # @param collection [Collection] The original collection initiating this call
+        # @return [VertexTargetState, SubGraphTargetState] Either a VertexTargetState instance or a SubGraphTargetState instance
         def build(model, collection)
           if collection.mapper.edge_attributes.empty?
             [VertexTargetState.new(model, collection)]
@@ -52,25 +75,50 @@ module Guacamole
       end
     end
 
+    # Describes the target state of the graph for a model without relations
     class VertexTargetState
-      attr_reader :model, :collection
+      # The original collection class to gain access to the mapper and database connection
+      #
+      # @return [Collection] The original collection
+      attr_reader :collection
 
+      # The model to persist and starting point for looking up edges and related vertices
+      #
+      # @return [Model] The model to persist
+      attr_reader :model
+
+      # Creates a new VertexTargetState
+      #
+      # This will be used to persist models without any relations
+      #
+      # @param model [Model] The model to persist
+      # @param collection [Collection] The original collection
       def initialize(model, collection)
         @model      = model
         @collection = collection
       end
 
+      # Returns a Vertex data structure
+      #
+      # @return [Vertex] A representation of the model and related information to be passed to the database
       def vertex
         Vertex.new(model,
                    collection.collection_name,
                    collection.mapper.model_to_document(model))
       end
 
+      # The name of the edge collection to be used
+      #
+      # This will be `nil` and is just for interface conformance
       def edge_collection_name
         nil
       end
 
-      def as_json
+      # Creates a hash to be used in JSON serialization for the transaction
+      #
+      # @param args [Object] Any number of arguments to match the interface
+      # @return [Hash] A hash with the required information to be passed to the database
+      def as_json(*args)
         {
          name: nil,
          fromVertices: [vertex],
@@ -81,38 +129,74 @@ module Guacamole
       end
     end
 
+    # Describes the target state of the graph for a model with relations
     class SubGraphTargetState
-      attr_reader :start_model, :edge_attribute
+      # The model to start looking for relations
+      #
+      # @return [Model] The start model to start looking for relations
+      attr_reader :start_model
 
+      # The edge attribute to resolve edges and related models
+      #
+      # @return [Attribute] The edge attribute to resolve edges and relations
+      attr_reader :edge_attribute
+
+      # Initializes a new SubGraphTargetState instance
+      #
+      # @param model [Model] The start model
+      # @param edge_attribute [Attribute] The edge attribute to use
       def initialize(model, edge_attribute)
         @edge_attribute = edge_attribute
         @start_model    = model
       end
 
+      # The class of the edge to be persisted
+      #
+      # @return [Class] The class of the edge
       def edge_class
         edge_attribute.edge_class
       end
 
+      # The edge collection to be used
+      #
+      # @return [EdgeCollection] The edge collection to be used
       def edge_collection
         EdgeCollection.for(edge_class)
       end
 
+      # The name of the edge collection
+      #
+      # @return [String] The name of the edge collection
       def edge_collection_name
         edge_collection.collection_name
       end
 
+      # Determines the mapper for a given model based on the edge collection
+      #
+      # @param model [Model] The model we need a mapper for
+      # @return mapper [Mapper] The mapper for that model based on the edge collection
       def mapper_for_model(model)
         edge_collection.mapper_for_start(model)
       end
 
+      # The document mapped from the model
+      #
+      # @param model [Model] The model we want to map
+      # @return [Document] A mapped document
       def model_to_document(model)
         mapper_for_model(model).model_to_document(model)
       end
 
+      # The related models of the start model based on the edge attribute
+      #
+      # @return [Array<Model>] A list of related models
       def related_models
         [edge_attribute.get_value(start_model)].compact.flatten
       end
 
+      # The keys of the old edge documents
+      #
+      # @return [Array<String>] A list of edge keys
       def old_edge_keys
         case start_model
         when edge_class.from_collection.model_class
@@ -122,6 +206,9 @@ module Guacamole
         end
       end
 
+      # The from vertices
+      #
+      # @return [Array<Vertex>] A list of from vertices
       def from_vertices
         case start_model
         when edge_class.from_collection.model_class
@@ -131,6 +218,9 @@ module Guacamole
         end
       end
 
+      # All to vertices
+      #
+      # @return [Array<Vertex>] A list of all to vertices
       def all_to_vertices
         case start_model
         when edge_class.from_collection.model_class
@@ -140,17 +230,27 @@ module Guacamole
         end
       end
 
+      # Only those vertices that are not yet persisted
+      #
+      # @return [Array<Vertex>] A subset of all the vertices with only new verices
       def to_vertices
         all_to_vertices.reject(&:key)
       end
 
+      # The edges of the sub graph
+      #
+      # @return [Array<Hash>] A list of hashes representing the edges
       def edges
         from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
           { _from: from_vertex.id, _to: to_vertex.id, attributes: {} }
         end
       end
 
-      def as_json
+      # Creates a hash to be used in JSON serialization for the transaction
+      #
+      # @param args [Object] Any number of arguments to match the interface
+      # @return [Hash] A hash with the required information to be passed to the database
+      def as_json(*args)
         {
           name: edge_collection_name,
           fromVertices: from_vertices,
@@ -162,21 +262,33 @@ module Guacamole
     end
 
     class << self
+      # Runs the transaction specified by the options
+      #
+      # @param options [Hash] A hash containing the original model and collection
       def run(options)
         new(options).execute_transaction
       end
     end
 
+    # Creates a new Transaction
+    #
+    # @param options [Hash] A hash containing the original model and collection
     def initialize(options)
       @collection = options[:collection]
       @model      = options[:model]
       init_connection_to_database
     end
 
+    # A list of TargetStates
+    #
+    # @return [Array<VertexTargetState, SubGraphTargetState>] The list of target states to apply
     def edge_collections
       TargetStatesBuilder.build(model, collection)
     end
 
+    # A list of collections we will write to
+    #
+    # @return [Array<String>] A list of the collection names we will write to
     def write_collections
       edge_collections.flat_map do |target_state|
         [target_state.edge_collection_name] +
@@ -184,10 +296,16 @@ module Guacamole
       end.uniq.compact
     end
 
+    # A list of collections we will read from
+    #
+    # @return [Array<String>] A list of the collection names we will read from
     def read_collections
       write_collections
     end
 
+    # The parameters to send to the database
+    #
+    # @return [Hash] A hash with the transaction parameters
     def transaction_params
       {
         edgeCollections: edge_collections,
@@ -196,14 +314,25 @@ module Guacamole
       }
     end
 
+    # Executes the actual transaction on the daatabase
+    #
+    # @api private
     def execute_transaction
       transaction.execute(transaction_params)
     end
 
+    # The JS code of the transaction
+    #
+    # @return [String] A JavaScript string with the transaction code
+    # @api private
     def transaction_code
       File.read(Guacamole.configuration.shared_path.join('transaction.js'))
     end
 
+    # A transaction instance from the database
+    #
+    # return [Ashikawa::Core::Transaction] A raw transaction to execute the Transaction on the database
+    # @api private
     def transaction
       transaction = database.create_transaction(transaction_code,
                                                 write: write_collections,
@@ -215,6 +344,7 @@ module Guacamole
 
     private
 
+    # The connection to the database
     def database
       collection.database
     end
