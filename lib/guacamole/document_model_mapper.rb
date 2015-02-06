@@ -249,12 +249,12 @@ module Guacamole
       model.instance_of?(model_class)
     end
 
-    private
-
+    # @api private
     def identity_map
       @identity_map
     end
 
+    # @api private
     def handle_embedded_models(model, document)
       models_to_embed.each do |attribute_name|
         document[attribute_name] = model.send(attribute_name).map do |embedded_model|
@@ -263,24 +263,31 @@ module Guacamole
       end
     end
 
+    # @api private
     def handle_related_models(document)
       edge_attributes.each do |edge_attribute|
         document.delete(edge_attribute.name)
       end
     end
 
+    # @api private
     def handle_related_documents(model)
       edge_attributes.each do |edge_attribute|
-        just_one = case model.class.attribute_set[edge_attribute.name].type
-                   when Virtus::Attribute::Collection::Type then false
-                   else
-                     true
-                   end
-
-        opts = { just_one: just_one, inverse: edge_attribute.inverse? }
-
-        model.send(edge_attribute.setter, Proxies::Relation.new(model, edge_attribute.edge_class, opts))
+        model.send(edge_attribute.setter, build_proxy(model, edge_attribute))
       end
+    end
+
+    # @api private
+    def build_proxy(model, edge_attribute)
+      opts = { just_one: !edge_attribute_a_collection?(model, edge_attribute),
+               inverse: edge_attribute.inverse? }
+
+      Proxies::Relation.new(model, edge_attribute.edge_class, opts)
+    end
+
+    # @api private
+    def edge_attribute_a_collection?(model, edge_attribute)
+      model.class.attribute_set[edge_attribute.name].type.is_a?(Virtus::Attribute::Collection::Type)
     end
   end
 end
