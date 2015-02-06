@@ -5,19 +5,30 @@ require 'guacamole/edge_collection'
 
 module Guacamole
   module Proxies
+    # This class smells of :reek:TooManyInstanceVariables
     class Relation < Proxy
-      # This method smells of :reek:DuplicateMethodCall
       # This method smells of :reek:TooManyStatements
       def initialize(model, edge_class, options = {})
-        responsible_edge_collection = EdgeCollection.for(edge_class)
+        @model      = model
+        @edge_class = edge_class
+        @options    = options
 
-        direction = options[:inverse] ? :inbound : :outbound
-
-        if options[:just_one]
-          init model, lambda { responsible_edge_collection.neighbors(model, direction).to_a.first }
-        else
-          init model, lambda { responsible_edge_collection.neighbors(model, direction) }
+        @target = lambda do
+          neighbors = edge_collection.neighbors(@model, direction)
+          relates_to_collection? ? neighbors : neighbors.to_a.first
         end
+      end
+
+      def edge_collection
+        EdgeCollection.for(@edge_class)
+      end
+
+      def direction
+        @options[:inverse] ? :inbound : :outbound
+      end
+
+      def relates_to_collection?
+        !@options[:just_one]
       end
     end
   end
