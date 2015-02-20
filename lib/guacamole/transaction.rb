@@ -243,7 +243,7 @@ module Guacamole
       # All to vertices
       #
       # @return [Array<Vertex>] A list of all to vertices
-      def all_to_vertices
+      def to_vertices
         case start_model
         when edge_class.from_collection.model_class
           related_models.map do |to_model|
@@ -254,18 +254,11 @@ module Guacamole
         end
       end
 
-      # Only those vertices that are not yet persisted
-      #
-      # @return [Array<Vertex>] A subset of all the vertices with only new verices
-      def to_vertices
-        all_to_vertices.reject(&:key)
-      end
-
       # The edges of the sub graph
       #
       # @return [Array<Hash>] A list of hashes representing the edges
       def edges
-        from_vertices.product(all_to_vertices).map do |from_vertex, to_vertex|
+        from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
           { _from: from_vertex.id_for_edge, _to: to_vertex.id_for_edge, attributes: {} }
         end
       end
