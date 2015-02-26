@@ -58,3 +58,10 @@ RegexpLiteral:
 
 StringLiterals:
   EnforcedStyle: single_quotes
+
+Style/ExtraSpacing:
+  Enabled: false
+
+Metrics/AbcSize:
+  Exclude:
+    - lib/guacamole/transaction.rb

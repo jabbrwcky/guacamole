@@ -5,12 +5,14 @@ require 'guacamole/edge_collection'
 
 describe Guacamole::EdgeCollection do
   let(:graph)  { double('Graph') }
+  let(:graph_name) { double('GraphName') }
   let(:config) { double('Configuration') }
 
   before do
     allow(Guacamole).to receive(:configuration).and_return(config)
     allow(config).to receive(:graph).and_return(graph)
     allow(graph).to receive(:add_edge_definition)
+    allow(graph).to receive(:name).and_return(graph_name)
   end
 
   context 'the edge collection module' do
@@ -143,34 +145,103 @@ describe Guacamole::EdgeCollection do
     end
 
     context 'getting neighbors' do
-      let(:graph_query) { instance_double('Guacamole::GraphQuery') }
-      let(:target_mapper) { double('DocumentModelMapper') }
+      context 'building the bind parameters' do
+        let(:model_key) { double('ModelKey') }
+        let(:edge_collection_name) { double('CollectionName') }
+        let(:direction) { double('Direction') }
+        let(:bind_parameters) { subject.build_bind_parameter(model, direction) }
 
-      before do
-        allow(Guacamole::GraphQuery).to receive(:new).and_return(graph_query)
-        allow(subject).to receive(:mapper_for_target).with(model).and_return(target_mapper)
-        allow(graph_query).to receive(:neighbors).and_return(graph_query)
+        before do
+          allow(model).to receive(:key).and_return(model_key)
+          allow(subject).to receive(:collection_name).and_return(edge_collection_name)
+        end
+
+        it 'should have the name of the graph' do
+          expect(bind_parameters[:graph]).to eq graph_name
+        end
+
+        it 'should have the key of the model' do
+          expect(bind_parameters[:model_key]).to eq model_key
+        end
+
+        it 'should have the name of the edge collection' do
+          expect(bind_parameters[:edge_collection]).to eq edge_collection_name
+        end
+
+        it 'should have the direction' do
+          expect(bind_parameters[:direction]).to eq direction
+        end
+
+        it 'should default to :inbound as direction' do
+          expect(subject.build_bind_parameter(model)[:direction]).to eq :inbound
+        end
       end
 
-      it 'should return a query object' do
-        pending 'Finish the specs'
-        query = subject.neighbors(model)
+      context 'building the actual query object' do
+        let(:aql_query) { instance_double('Guacamole::AqlQuery') }
+        let(:mapper) { double('Mapper') }
+        let(:bind_parameters) { double('BindParameters') }
 
-        expect(query).to eq graph_query
-      end
+        before do
+          allow(Guacamole::AqlQuery).to receive(:new).and_return(aql_query)
+          allow(aql_query).to receive(:aql_fragment=)
+          allow(aql_query).to receive(:bind_parameters=)
+          allow(subject).to receive(:build_bind_parameter).and_return(bind_parameters)
+          allow(subject).to receive(:mapper_for_target).with(model).and_return(mapper)
+        end
 
-      it 'should initialize the query object with the graph an the appropriate mapper' do
-        pending 'Finish the specs'
-        expect(Guacamole::GraphQuery).to receive(:new).with(graph, target_mapper).and_return(graph_query)
+        it 'should be an AqlQuery' do
+          expect(subject.neighbors(model)).to eq aql_query
+        end
 
-        subject.neighbors(model)
-      end
+        it 'should receive an optional direction' do
+          direction = double('Direction')
+          expect(subject).to receive(:build_bind_parameter).with(model, direction).and_return(bind_parameters)
 
-      it 'should provide a #neighbors function' do
-        pending 'Finish the specs'
-        expect(graph_query).to receive(:neighbors).with(model, 'some_edges')
+          subject.neighbors(model, direction)
+        end
 
-        subject.neighbors(model)
+        it 'should default the direction to :inbound' do
+          expect(subject).to receive(:build_bind_parameter).with(model, :inbound).and_return(bind_parameters)
+
+          subject.neighbors(model)
+        end
+
+        it 'should set the collection to self' do
+          expect(Guacamole::AqlQuery).to receive(:new).with(subject, anything, anything)
+
+          subject.neighbors(model)
+        end
+
+        it 'should set the mapper to the appropriate mapper of model' do
+          expect(Guacamole::AqlQuery).to receive(:new).with(anything, mapper, anything)
+
+          subject.neighbors(model)
+        end
+
+        it 'should have no :for_in part' do
+          expect(Guacamole::AqlQuery).to receive(:new).with(anything, anything, hash_including(for_in: nil))
+
+          subject.neighbors(model)
+        end
+
+        it 'should have no :return_as part' do
+          expect(Guacamole::AqlQuery).to receive(:new).with(anything, anything, hash_including(return_as: nil))
+
+          subject.neighbors(model)
+        end
+
+        it 'should have the query string set to NEIGHBORS_AQL_STRING' do
+          expect(aql_query).to receive(:aql_fragment=).with(Guacamole::EdgeCollection::NEIGHBORS_AQL_STRING)
+
+          subject.neighbors(model)
+        end
+
+        it 'should have the bind_parameters set to bind_parameters' do
+          expect(aql_query).to receive(:bind_parameters=).with(bind_parameters)
+
+          subject.neighbors(model)
+        end
       end
     end
   end

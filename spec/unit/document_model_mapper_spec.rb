@@ -72,26 +72,15 @@ describe Guacamole::DocumentModelMapper do
       let(:attribute_with_edge_relation) do
         instance_double('Guacamole::DocumentModelMapper::Attribute', name: 'my_relation')
       end
-      let(:related_edge_class) { instance_double('Guacamole::Edge') }
-      let(:relation_proxy_class) { Guacamole::Proxies::Relation }
-      let(:relation_proxy) { instance_double('Guacamole::Proxies::Relation') }
+      let(:relation_proxy) { double('Proxy') }
+      let(:setter_for_relation) { double('SetterForRelation') }
 
       before do
-        allow(attribute_with_edge_relation).to receive(:setter).and_return('my_relation=')
-        allow(attribute_with_edge_relation).to receive(:edge_class).and_return(related_edge_class)
+        allow(attribute_with_edge_relation).to receive(:setter).and_return(setter_for_relation)
         allow(subject).to receive(:edge_attributes).and_return([attribute_with_edge_relation])
-        allow(relation_proxy_class).to receive(:new).
-                                        with(model_instance, related_edge_class).
-                                        and_return(relation_proxy)
-      end
-
-      it 'should initialize a relation proxy with the model and the appropriate edge class' do
-        pending 'Finish the specs'
-        expect(relation_proxy_class).to receive(:new).
-                                         with(model_instance, related_edge_class).
-                                         and_return(relation_proxy)
-
-        subject.document_to_model document
+        allow(subject).to receive(:build_proxy).
+                           with(model_instance, attribute_with_edge_relation).
+                           and_return(relation_proxy)
       end
 
       it 'should set first the key and rev and after that the proxy' do
@@ -102,11 +91,62 @@ describe Guacamole::DocumentModelMapper do
         subject.document_to_model document
       end
 
-      it 'should assign the relation proxy for the appropriate attribute' do
-        pending 'Finish the specs'
-        expect(model_instance).to receive(:my_relation=).with(relation_proxy)
+      it 'should set a proxy for each edge_attribute' do
+        expect(model_instance).to receive(:send).with(setter_for_relation, relation_proxy)
 
         subject.document_to_model document
+      end
+
+      context 'setting the proxy' do
+        let(:related_edge_class) { instance_double('Guacamole::Edge') }
+        let(:relation_proxy_class) { Guacamole::Proxies::Relation }
+        let(:relation_proxy) { instance_double('Guacamole::Proxies::Relation') }
+
+        before do
+          allow(attribute_with_edge_relation).to receive(:edge_class).and_return(related_edge_class)
+          allow(attribute_with_edge_relation).to receive(:inverse?).and_return(false)
+          allow(relation_proxy_class).to receive(:new).and_return(relation_proxy)
+          allow(subject).to receive(:build_proxy).and_call_original
+          allow(subject).to receive(:edge_attribute_a_collection?).and_return(false)
+        end
+
+        it 'should build the proxy with the model, the attribute class and options' do
+          expect(relation_proxy_class).to receive(:new).
+                                           with(model_instance, related_edge_class, hash_including(just_one: true, inverse: false)).
+                                           and_return(relation_proxy)
+
+          expect(subject.build_proxy(model_instance, attribute_with_edge_relation)).to eq relation_proxy
+        end
+
+        it 'should set the option :inverse based on the edge_attribute' do
+          expect(subject).to receive(:edge_attribute_a_collection?).with(model_instance, attribute_with_edge_relation)
+
+          subject.build_proxy(model_instance, attribute_with_edge_relation)
+        end
+
+        it 'should set the option :just_one based on the edge_attribute type' do
+          inverse_value = double('InverseValue')
+          allow(attribute_with_edge_relation).to receive(:inverse?).and_return(inverse_value)
+          expect(relation_proxy_class).to receive(:new).
+                                           with(anything, anything, hash_including(inverse: inverse_value))
+
+          subject.build_proxy(model_instance, attribute_with_edge_relation)
+        end
+
+        it 'should check the edge_attribute type for a Virtus collection type' do
+          model_class, attribute_set, attribute_type, virtus_collection_type = [double] * 4
+          stub_const('Virtus::Attribute::Collection::Type', virtus_collection_type)
+
+          allow(subject).to receive(:edge_attribute_a_collection?).and_call_original
+
+          allow(model_instance).to receive(:class).and_return(model_class)
+          allow(model_class).to receive(:attribute_set).and_return(attribute_set)
+          allow(attribute_set).to receive(:[]).with(attribute_with_edge_relation.name).and_return(attribute_type)
+          allow(attribute_type).to receive(:type).and_return(attribute_type)
+          expect(attribute_type).to receive(:is_a?).with(virtus_collection_type).and_return(false)
+
+          subject.edge_attribute_a_collection?(model_instance, attribute_with_edge_relation)
+        end
       end
     end
 

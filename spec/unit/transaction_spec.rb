@@ -165,15 +165,6 @@ describe Guacamole::Transaction::SubGraphTargetState do
   its(:edge_collection_name) { should eq edge_collection_name }
   its(:edge_class) { should eq edge_class }
 
-  it 'should build a list of :to vertices with existing documents' do
-    vertex_with_key    = double('Vertex', key: double)
-    vertex_without_key = double('Vertex', key: nil)
-
-    allow(subject).to receive(:all_to_vertices).and_return([vertex_with_key, vertex_without_key])
-
-    expect(subject.to_vertices).to eq [vertex_without_key]
-  end
-
   it 'should have a representation suitable for JSON serialization' do
     from_vertices = double('FromVertices')
     to_vertices   = double('ToVertices')
@@ -230,7 +221,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
 
     before do
       allow(subject).to receive(:from_vertices).and_return([from_vertex1, from_vertex2])
-      allow(subject).to receive(:all_to_vertices).and_return([to_vertex])
+      allow(subject).to receive(:to_vertices).and_return([to_vertex])
     end
 
     it 'should build a list of edges to connect all from vertices to the to vertices' do
@@ -288,7 +279,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       end
 
       it 'should transform the related models to :to vertices' do
-        expect(subject.all_to_vertices).to eq [to_vertex]
+        expect(subject.to_vertices).to eq [to_vertex]
       end
 
       it 'should select the old edge keys based on :from for the model' do
@@ -309,7 +300,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       end
 
       it 'should transform model to the :to vertices' do
-        expect(subject.all_to_vertices).to eq [to_vertex]
+        expect(subject.to_vertices).to eq [to_vertex]
       end
 
       it 'should transform the related models to :from vertices' do

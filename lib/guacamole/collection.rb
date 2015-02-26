@@ -301,12 +301,10 @@ module Guacamole
       #       persisted. In future versions we should add something like `:autosave`
       #       to always save associated models.
       def create_document_from(model)
-        result = with_transaction(model)[model.object_id.to_s]
-
-        model.key = result['_key']
-        model.rev = result['_rev']
-
-        model
+        with_transaction(model) do |document|
+          model.key = document['_key']
+          model.rev = document['_rev']
+        end
       end
 
       # Replace a document in the database with this model
@@ -314,15 +312,17 @@ module Guacamole
       # @api private
       # @note This will **not** update associated models (see {#create})
       def replace_document_from(model)
-        result = with_transaction(model)
-
-        model.rev = result['_rev']
-
-        model
+        with_transaction(model) do |document|
+          model.rev = document['_rev']
+        end
       end
 
       def with_transaction(model)
-        Transaction.run(collection: self, model: model)
+        result = Transaction.run(collection: self, model: model)
+
+        yield result[model.object_id.to_s]
+
+        model
       end
 
       # Gets the callback class for the given model class

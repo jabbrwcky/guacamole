@@ -23,13 +23,55 @@ describe Guacamole::Proxies::Relation do
   end
 
   context 'initialized proxy' do
-    subject { Guacamole::Proxies::Relation.new(model, edge_class) }
+    let(:proxy_options) { {} }
+    let(:neighbors) { double('Neighbors') }
 
-    it 'should call the #neigbors method on the appropriate edge collection' do
-      pending 'Finish the specs'
-      expect(responsible_edge_collection).to receive(:neighbors).with(model)
+    subject { Guacamole::Proxies::Relation.new(model, edge_class, proxy_options) }
 
-      subject.to_a
+    # The following is not possible with `its` because `send` is not available
+    it 'should have an edge_collection' do
+      expect(subject.edge_collection).to eq responsible_edge_collection
+    end
+
+    it 'should have a direction' do
+      expect(subject.direction).to eq :outbound
+    end
+
+    it 'should know it the proxy relates to a collection' do
+      expect(subject.relates_to_collection?).to eq true
+    end
+
+    context 'with relation to collection' do
+      let(:proxy_options) { { just_one: false } }
+      let(:related_models) { double('RelatedModels', count: 23) }
+
+      before do
+        allow(related_models).to receive(:to_a).and_return(neighbors)
+        allow(responsible_edge_collection).to receive(:neighbors).
+                                               with(model, subject.direction).
+                                               and_return(related_models)
+      end
+
+      it 'should call the #neighbors method on the appropriate edge collection' do
+        expect(subject.count).to eq related_models.count
+      end
+    end
+
+    context 'with relation to single model' do
+      let(:proxy_options) { { just_one: true } }
+      let(:related_model) { double('RelatedModel', name: 'The Model') }
+
+      before do
+        allow(neighbors).to receive(:first).and_return(related_model)
+        allow(neighbors).to receive(:to_a).and_return(neighbors)
+        allow(responsible_edge_collection).to receive(:neighbors).
+                                               with(model, subject.direction).
+                                               and_return(neighbors)
+      end
+
+      it 'should call the #neighbors method on the appropriate edge collection' do
+        expect(subject.name).to eq related_model.name
+      end
     end
   end
 end

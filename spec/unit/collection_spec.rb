@@ -13,6 +13,12 @@ end
 describe Guacamole::Collection do
   let(:callbacks) { double('Callback') }
   let(:callbacks_module) { double('CallbacksModule') }
+  let(:connection) { double('Connection') }
+  let(:mapper) { double('Mapper') }
+  let(:mapper) { double('Mapper') }
+  let(:database) { double('Database') }
+  let(:graph) { double('Graph') }
+  let(:configuration) { double('Configuration') }
 
   subject { TestCollection }
 
@@ -22,6 +28,14 @@ describe Guacamole::Collection do
     allow(callbacks).to receive(:run_callbacks).with(:save, :update).and_yield
     allow(callbacks).to receive(:run_callbacks).with(:delete).and_yield
     stub_const('Guacamole::Callbacks', callbacks_module)
+
+    allow(Guacamole).to receive(:configuration).and_return(configuration)
+    allow(configuration).to receive(:database).and_return(database)
+    allow(configuration).to receive(:default_mapper).and_return(mapper)
+    allow(configuration).to receive(:graph).and_return(graph)
+
+    subject.connection = connection
+    subject.mapper     = mapper
   end
 
   describe 'Configuration' do
@@ -61,11 +75,7 @@ describe Guacamole::Collection do
     end
 
     it 'should default to Guacamole.configuration.database' do
-      default_database = double('Database')
-      configuration    = double('Configuration', database: default_database)
-      allow(Guacamole).to receive(:configuration).and_return(configuration)
-
-      expect(subject.database).to eq default_database
+      expect(subject.database).to eq database
     end
   end
 
@@ -100,27 +110,17 @@ describe Guacamole::Collection do
   end
 
   describe 'mapper' do
+    let(:mapper_instance) { double('MapperInstance') }
+
     before do
+      allow(mapper).to receive(:new).with(subject.model_class).and_return(mapper_instance)
+
       subject.mapper = nil
     end
 
     it 'should default to Guacamole.configuration.default_mapper' do
-      default_mapper  = double('Mapper')
-      mapper_instance = double('MapperInstance')
-      configuration   = double('Configuration', default_mapper: default_mapper)
-      allow(Guacamole).to receive(:configuration).and_return(configuration)
-      allow(default_mapper).to receive(:new).with(subject.model_class).and_return(mapper_instance)
-
       expect(subject.mapper).to eq mapper_instance
     end
-  end
-
-  let(:connection) { double('Connection') }
-  let(:mapper)     { double('Mapper') }
-
-  before do
-    subject.connection = connection
-    subject.mapper     = mapper
   end
 
   describe 'by_key' do
@@ -140,200 +140,92 @@ describe Guacamole::Collection do
   end
 
   describe 'save' do
-    before do
-      allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-    end
+    let(:model) { double('Model') }
 
-    let(:key)       { double('Key') }
-    let(:rev)       { double('Rev') }
-    let(:document)  { double('Document', key: key, revision: rev).as_null_object }
-    let(:model)     { double('Model').as_null_object }
-    let(:response)  { double('Hash') }
-
-    context 'a valid model' do
+    context 'a not yet persisted model' do
       before do
-        allow(model).to receive(:valid?).and_return(true)
-        allow(connection).to receive(:create_document).with(document).and_return(document)
         allow(model).to receive(:persisted?).and_return(false)
+        allow(subject).to receive(:create).with(model).and_return(model)
       end
 
-      it 'should run the save callbacks for the given model' do
-        pending 'Finish the specs'
-        expect(subject).to receive(:callbacks).with(model).and_return(callbacks)
-
-        subject.save model
+      it 'should return the model after calling save' do
+        expect(subject.save(model)).to eq model
       end
 
-      context 'which is not persisted' do
-        it 'should return the model after calling save' do
-          pending 'Finish the specs'
-          expect(subject.save(model)).to eq model
-        end
+      it 'should pass the model to the #create method' do
+        expect(subject).to receive(:create).with(model).and_return(model)
 
-        it 'should add key to model' do
-          pending 'Finish the specs'
-          expect(model).to receive(:key=).with(key)
-
-          subject.save model
-        end
-
-        it 'should add rev to model' do
-          pending 'Finish the specs'
-          expect(model).to receive(:rev=).with(rev)
-
-          subject.save model
-        end
-      end
-
-      context 'which is persisted' do
-        before do
-          allow(model).to receive(:persisted?).and_return(true)
-          allow(connection).to receive(:replace).and_return(response)
-          allow(response).to receive(:[]).with('_rev').and_return(rev)
-        end
-
-        let(:model)    { double('Model', key: key).as_null_object }
-
-        it 'should update the document by key via the connection' do
-          pending 'Finish the specs'
-          expect(connection).to receive(:replace).with(key, document)
-
-          subject.save model
-        end
-
-        it 'should update the revision after replacing the document' do
-          pending 'Finish the specs'
-          allow(connection).to receive(:replace).and_return(response).ordered
-          expect(model).to receive(:rev=).with(rev).ordered
-
-          subject.save model
-        end
-
-        it 'should return the model' do
-          pending 'Finish the specs'
-          expect(subject.save(model)).to eq model
-        end
-
-        it 'should not update created_at' do
-          pending 'Finish the specs'
-          expect(model).not_to receive(:created_at=)
-
-          subject.save model
-        end
-
+        subject.save(model)
       end
     end
 
-    context 'an invalid model' do
+    context 'a persisted model' do
       before do
-        expect(model).to receive(:valid?).and_return(false)
+        allow(model).to receive(:persisted?).and_return(true)
+        allow(subject).to receive(:update).with(model).and_return(model)
       end
 
-      context 'which is not persisted' do
-
-        before do
-          allow(model).to receive(:persisted?).and_return(false)
-        end
-
-        it 'should not be used to create the document' do
-          expect(connection).not_to receive(:create_document)
-
-          subject.save model
-        end
-
-        it 'should not be changed' do
-          expect(model).not_to receive(:key=)
-          expect(model).not_to receive(:rev=)
-
-          subject.save model
-        end
-
-        it 'should return false' do
-          expect(subject.save(model)).to be false
-        end
+      it 'should return the model after calling save' do
+        expect(subject.save(model)).to eq model
       end
 
-      context 'which is persisted' do
+      it 'should pass the model to the #update method' do
+        expect(subject).to receive(:update).with(model).and_return(model)
 
-        before do
-          allow(model).to receive(:persisted?).and_return(true)
-          allow(response).to receive(:[]).with('_rev').and_return(rev)
-        end
-
-        let(:model)    { double('Model', key: key).as_null_object }
-
-        it 'should not be used to update the document' do
-          expect(connection).not_to receive(:replace)
-
-          subject.save model
-        end
-
-        it 'should not be changed' do
-          expect(model).not_to receive(:rev=)
-          expect(model).not_to receive(:updated_at=)
-
-          subject.save model
-        end
-
-        it 'should return false' do
-          expect(subject.save(model)).to be false
-        end
+        subject.save(model)
       end
     end
   end
 
   describe 'create' do
-    before do
-      allow(connection).to receive(:create_document).with(document).and_return(document)
-      allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-    end
+    let(:key) { double('Key') }
+    let(:rev) { double('Rev') }
+    let(:document) { double('Document') }
+    let(:model) { double('Model') }
 
-    let(:key)       { double('Key') }
-    let(:rev)       { double('Rev') }
-    let(:document)  { double('Document', key: key, revision: rev).as_null_object }
-    let(:model)     { double('Model').as_null_object }
+    before do
+      allow(mapper).to receive(:model_to_document).with(model).and_return(document)
+      allow(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+      allow(document).to receive(:[]).with('_key').and_return(key)
+      allow(document).to receive(:[]).with('_rev').and_return(rev)
+      allow(model).to receive(:key=).with(key)
+      allow(model).to receive(:rev=).with(rev)
+    end
 
     context 'a valid model' do
       before do
         allow(model).to receive(:valid?).and_return(true)
       end
 
-      it 'should create a document' do
-        pending 'Finish the specs'
-        expect(connection).to receive(:create_document).with(document).and_return(document)
-        expect(mapper).to receive(:model_to_document).with(model).and_return(document)
+      it 'should create a document with a Transaction' do
+        expect(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
 
         subject.create model
       end
 
       it 'should return the model after calling create' do
-        pending 'Finish the specs'
         expect(subject.create(model)).to eq model
       end
 
       it 'should add key to model' do
-        pending 'Finish the specs'
         expect(model).to receive(:key=).with(key)
 
         subject.create model
       end
 
       it 'should add rev to model' do
-        pending 'Finish the specs'
         expect(model).to receive(:rev=).with(rev)
 
         subject.create model
       end
 
       it 'should run the create callbacks for the given model' do
-        pending 'Finish the specs'
         expect(callbacks).to receive(:run_callbacks).with(:save, :create).and_yield
 
         subject.create model
       end
 
       it 'should run first the validation and then the create callbacks' do
-        pending 'Finish the specs'
         expect(model).to receive(:valid?).ordered.and_return(true)
         expect(callbacks).to receive(:run_callbacks).ordered.with(:save, :create).and_yield
 
@@ -347,7 +239,7 @@ describe Guacamole::Collection do
       end
 
       it 'should not be used to create the document' do
-        expect(connection).not_to receive(:create_document)
+        expect(subject).not_to receive(:create_document_from)
 
         subject.create model
       end
@@ -426,16 +318,18 @@ describe Guacamole::Collection do
   end
 
   describe 'update' do
-    let(:key)      { double('Key') }
-    let(:rev)      { double('Rev') }
-    let(:model)    { double('Model', key: key).as_null_object }
-    let(:document) { double('Document').as_null_object }
-    let(:response) { double('Hash') }
+    let(:key) { double('Key') }
+    let(:rev) { double('Rev') }
+    let(:document) { double('Document') }
+    let(:model) { double('Model') }
 
     before do
       allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-      allow(connection).to receive(:replace).and_return(response)
-      allow(response).to receive(:[]).with('_rev').and_return(rev)
+      allow(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+      allow(document).to receive(:[]).with('_key').and_return(key)
+      allow(document).to receive(:[]).with('_rev').and_return(rev)
+      allow(model).to receive(:key=).with(key)
+      allow(model).to receive(:rev=).with(rev)
     end
 
     context 'a valid model' do
@@ -444,34 +338,28 @@ describe Guacamole::Collection do
       end
 
       it 'should update the document by key via the connection' do
-        pending 'Finish the specs'
-        expect(connection).to receive(:replace).with(key, document)
+        expect(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
 
         subject.update model
       end
 
       it 'should update the revision after replacing the document' do
-        pending 'Finish the specs'
-        allow(connection).to receive(:replace).and_return(response).ordered
-        expect(model).to receive(:rev=).with(rev).ordered
+        expect(model).to receive(:rev=).with(rev)
 
         subject.update model
       end
 
       it 'should return the model' do
-        pending 'Finish the specs'
         expect(subject.update(model)).to eq model
       end
 
       it 'should run the update callbacks for the given model' do
-        pending 'Finish the specs'
         expect(callbacks).to receive(:run_callbacks).with(:save, :update).and_yield
 
         subject.update model
       end
 
       it 'should run first the validation and then the update callbacks' do
-        pending 'Finish the specs'
         expect(model).to receive(:valid?).ordered.and_return(true)
         expect(callbacks).to receive(:run_callbacks).ordered.with(:save, :update).and_yield
 
@@ -485,7 +373,7 @@ describe Guacamole::Collection do
       end
 
       it 'should not be used to update the document' do
-        expect(connection).not_to receive(:replace)
+        expect(subject).not_to receive(:with_transaction)
 
         subject.update model
       end

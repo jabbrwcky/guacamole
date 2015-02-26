@@ -1,7 +1,7 @@
 # -*- encoding : utf-8 -*-
 
 require 'guacamole/collection'
-require 'guacamole/graph_query'
+require 'guacamole/aql_query'
 
 require 'ashikawa-core'
 require 'active_support'
@@ -56,21 +56,19 @@ module Guacamole
       end
 
       def neighbors(model, direction = :inbound)
-        bind_parameters = {
+        query                 = AqlQuery.new(self, mapper_for_target(model), return_as: nil, for_in: nil)
+        query.aql_fragment    = NEIGHBORS_AQL_STRING
+        query.bind_parameters = build_bind_parameter(model, direction)
+        query
+      end
+
+      def build_bind_parameter(model, direction = :inbound)
+        {
           graph: Guacamole.configuration.graph.name,
           model_key: model.key,
           edge_collection: collection_name,
           direction: direction
         }
-
-        build_neihgbors_query(model, bind_parameters)
-      end
-
-      def build_neihgbors_query(model, params = {})
-        query                 = AqlQuery.new(self, mapper_for_target(model), return_as: nil, for_in: nil)
-        query.aql_fragment    = NEIGHBORS_AQL_STRING
-        query.bind_parameters = params
-        query
       end
 
       def mapper_for_target(model)

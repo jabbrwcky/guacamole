@@ -20,16 +20,6 @@ module Guacamole
         undef_method(method) unless method =~ /^__/
       end
 
-      # Convenience method to setup the proxy. The subclasses need to care of creating
-      # the `target` correctly.
-      #
-      # @param [Object] base The class holding the reference. Currently not used.
-      # @param [#call] target The lambda for getting the required objects from the database.
-      def init(base, target)
-        @base   = base
-        @target = target
-      end
-
       def method_missing(meth, *args, &blk)
         target.call.send meth, *args, &blk
       end

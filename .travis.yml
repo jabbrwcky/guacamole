@@ -4,13 +4,13 @@ before_script:
 - "./spec/setup/arangodb.sh"
 rvm:
 - 1.9.3
-- 2.0.0
-- 2.1.2
+- 2.1.5
+- 2.2.0
 - jruby-19mode
 - jruby-head
 - ruby-head
 env:
-- ARANGODB_DISABLE_AUTHENTIFICATION=true VERSION=2.2
+- ARANGODB_DISABLE_AUTHENTIFICATION=true VERSION=2.4
 matrix:
   allow_failures:
   - rvm: jruby-19mode

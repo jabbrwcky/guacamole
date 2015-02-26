@@ -236,4 +236,48 @@ describe 'Graph based relations' do
       end
     end
   end
+
+  context 'update an existing member in a relationship' do
+    let(:suzanne_collins) { Fabricate(:author, name: 'Suzanne Collin') }
+    let(:the_hunger_games) { Fabricate(:book, title: 'The Hunger Game') }
+
+    before do
+      suzanne_collins.books << the_hunger_games
+      AuthorsCollection.save suzanne_collins
+      Guacamole::IdentityMap.reset
+    end
+
+    it 'should update an existing start document in a relations' do
+      suzanne_collins.name = 'Suzanne Collins'
+      AuthorsCollection.save suzanne_collins
+      Guacamole::IdentityMap.reset
+
+      reloaded_author = AuthorsCollection.by_key(suzanne_collins.key)
+
+      expect(reloaded_author.name).to eq 'Suzanne Collins'
+    end
+
+    it 'should update an existing target document in a relation' do
+      the_hunger_games.title = 'The Hunger Games'
+      BooksCollection.save the_hunger_games
+      Guacamole::IdentityMap.reset
+
+      reloaded_book = BooksCollection.by_key(the_hunger_games.key)
+
+      expect(reloaded_book.title).to eq 'The Hunger Games'
+    end
+
+    it 'should update both' do
+      the_hunger_games.title = 'The Hunger Games'
+      suzanne_collins.name = 'Suzanne Collins'
+      AuthorsCollection.save suzanne_collins
+      Guacamole::IdentityMap.reset
+
+      reloaded_author = AuthorsCollection.by_key(suzanne_collins.key)
+      reloaded_book = BooksCollection.by_key(the_hunger_games.key)
+
+      expect(reloaded_author.name).to eq 'Suzanne Collins'
+      expect(reloaded_book.title).to eq 'The Hunger Games'
+    end
+  end
 end
