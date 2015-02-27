@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'guacamole/model'
+require 'guacamole/collection'
 
 class TestModel
   include Guacamole::Model
@@ -113,6 +114,52 @@ describe Guacamole::Model do
       subject.key = 'my_key'
       expect(subject.id).to eq 'my_key'
     end
+  end
+
+  describe 'arangodb_id' do
+    let(:model_key) { double('Key') }
+    let(:collection_name) { double('CollectionName') }
+
+    subject { TestModel.new }
+
+    before do
+      allow(subject).to receive(:key).and_return(model_key)
+      allow(subject).to receive(:collection_name).and_return(collection_name)
+    end
+
+    context 'with persisted model' do
+      before do
+        allow(subject).to receive(:persisted?).and_return(true)
+      end
+
+      its(:arangodb_id) { should eq [collection_name, model_key].join('/') }
+    end
+
+    context 'with non-persisted model' do
+      before do
+        allow(subject).to receive(:persisted?).and_return(false)
+      end
+
+      its(:arangodb_id) { should be_nil }
+    end
+  end
+
+  describe 'collection_name' do
+    let(:default_mapper) { class_double('Guacamole::DocumentModelMapper') }
+    let(:configuration) { instance_double('Guacamole::Configuration') }
+    let(:collection) { double('Guacamole::Collection') }
+    let(:collection_name) { double('CollectionName') }
+
+    subject { TestModel.new }
+
+    before do
+      allow(Guacamole).to receive(:configuration).and_return(configuration)
+      allow(configuration).to receive(:default_mapper).and_return(default_mapper)
+      allow(default_mapper).to receive(:collection_for).with(subject.class).and_return(collection)
+      allow(collection).to receive(:collection_name).and_return(collection_name)
+    end
+
+    its(:collection_name) { should eq collection_name }
   end
 
   describe '==' do

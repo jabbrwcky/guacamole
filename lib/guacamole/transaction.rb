@@ -33,7 +33,7 @@ module Guacamole
       #
       # @return [String] The id of the model
       def id
-        model._id
+        model.arangodb_id
       end
 
       # An ID suitable for resolving the edges in the transaction
@@ -43,7 +43,7 @@ module Guacamole
       #
       # @return [String] The ID suitable for persisting the edges
       def id_for_edge
-        model._id || model.object_id
+        model.arangodb_id || model.object_id
       end
 
       # Creates a hash to be used in JSON serialization for the transaction
@@ -220,9 +220,9 @@ module Guacamole
       def old_edge_keys
         case start_model
         when edge_class.from_collection.model_class
-          edge_collection.by_example(_from: start_model._id).map(&:key)
+          edge_collection.by_example(_from: start_model.arangodb_id).map(&:key)
         when edge_class.to_collection.model_class
-          edge_collection.by_example(_to: start_model._id).map(&:key)
+          edge_collection.by_example(_to: start_model.arangodb_id).map(&:key)
         end
       end
 
