@@ -2,9 +2,10 @@
 
 require 'spec_helper'
 require 'guacamole/transaction'
+require 'guacamole/model'
 
 describe Guacamole::Transaction::Vertex do
-  let(:model) { double('Model') }
+  let(:model) { instance_double('Model') }
   let(:model_object_id) { double('ObjectId') }
   let(:model_key) { double('Key') }
   let(:model_id) { double('Id') }
@@ -16,7 +17,7 @@ describe Guacamole::Transaction::Vertex do
   before do
     allow(model).to receive(:object_id).and_return(model_object_id)
     allow(model).to receive(:key).and_return(model_key)
-    allow(model).to receive(:_id).and_return(model_id)
+    allow(model).to receive(:arangodb_id).and_return(model_id)
   end
 
   its(:key) { should eq model_key }
@@ -38,7 +39,7 @@ describe Guacamole::Transaction::Vertex do
       collection: collection,
       document: document,
       _key: model_key,
-      _id: model._id
+      _id: model.arangodb_id
     }
 
     expect(subject.as_json).to eq vertex_hash
@@ -46,7 +47,7 @@ describe Guacamole::Transaction::Vertex do
 end
 
 describe Guacamole::Transaction::TargetStatesBuilder do
-  let(:model) { double('Model') }
+  let(:model) { instance_double('Model') }
   let(:mapper) { double('Mapper') }
   let(:collection) { double('Collection') }
   let(:edge_attributes) { [] }
@@ -87,7 +88,7 @@ describe Guacamole::Transaction::TargetStatesBuilder do
 end
 
 describe Guacamole::Transaction::VertexTargetState do
-  let(:model) { double('Model') }
+  let(:model) { instance_double('Model') }
   let(:collection) { double('Collection') }
   let(:collection_name) { double('CollectionName') }
   let(:document) { double('Document') }
@@ -119,7 +120,7 @@ describe Guacamole::Transaction::VertexTargetState do
 end
 
 describe Guacamole::Transaction::SubGraphTargetState do
-  let(:model) { double('Model') }
+  let(:model) { instance_double('Model') }
   let(:model_id) { double('ModelId') }
   let(:from_model_class) { double('FromModelClass') }
   let(:to_model_class) { double('ToModelClass') }
@@ -144,7 +145,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
   before do
     stub_const('Guacamole::EdgeCollection', edge_collection_class)
 
-    allow(model).to receive(:_id).and_return(model_id)
+    allow(model).to receive(:arangodb_id).and_return(model_id)
 
     allow(edge_class).to receive(:from_collection).and_return(from_collection)
     allow(from_collection).to receive(:model_class).and_return(from_model_class)
@@ -200,15 +201,15 @@ describe Guacamole::Transaction::SubGraphTargetState do
   end
 
   it 'should get a single related model of the edge_attribute as array' do
-    related_model = double('Model')
+    related_model = instance_double('Model')
     allow(edge_attribute).to receive(:get_value).with(model).and_return(related_model)
 
     expect(subject.related_models).to eq [related_model]
   end
 
   it 'should get multiple related models of the edge_attribute as array' do
-    related_model1 = double('Model')
-    related_model2 = double('Model')
+    related_model1 = instance_double('Model')
+    related_model2 = instance_double('Model')
     allow(edge_attribute).to receive(:get_value).with(model).and_return([related_model1, related_model2])
 
     expect(subject.related_models).to eq [related_model1, related_model2]
@@ -318,7 +319,7 @@ end
 
 describe Guacamole::Transaction do
   let(:collection) { double('Collection') }
-  let(:model) { double('Model') }
+  let(:model) { instance_double('Model') }
   let(:database) { double('Database') }
   let(:init_options) { { collection: collection, model: model } }
 

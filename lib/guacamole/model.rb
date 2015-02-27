@@ -5,6 +5,9 @@ require 'active_support/concern'
 require 'active_model' # Cherry Pick not possible
 require 'virtus'
 
+require 'guacamole/configuration'
+require 'guacamole/document_model_mapper'
+
 module Guacamole
   # A domain model of your application
   #
@@ -218,8 +221,21 @@ module Guacamole
         key
       end
 
-      def _id
-        persisted? ? [self.class.name.underscore.pluralize, key].join('/') : nil
+      # This will return the ID used in ArangoDB. It is used internally and
+      # there should be only rare cases when an API user needs to access it.
+      # Nevertheless this is not considered a private API.
+      #
+      # @return [String, nil] The ArangoDB id of this model or nil if the model is not yet persisted
+      def arangodb_id
+        persisted? ? [collection_name, key].join('/') : nil
+      end
+
+      # For constructing the ArangoDB ID we need to know which collection is
+      # responsible for this model class.
+      #
+      # @return [String] The name of the collection in ArangoDB
+      def collection_name
+        Guacamole.configuration.default_mapper.collection_for(self.class).collection_name
       end
 
       def valid_with_callbacks?(context = nil)

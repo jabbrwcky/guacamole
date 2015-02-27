@@ -122,7 +122,7 @@ describe 'Graph based relations' do
       let(:deathly_hallows) { Fabricate(:book, title: 'Deathly Hallows') }
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
 
-      let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins._id).count } }
+      let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins.arangodb_id).count } }
 
       before do
         suzanne_collins.books = [the_hunger_games, catching_fire, mockingjay, deathly_hallows]
@@ -160,7 +160,7 @@ describe 'Graph based relations' do
       let(:deathly_hallows) { Fabricate(:book, title: 'Deathly Hallows') }
       let(:panem_trilogy) { [the_hunger_games, catching_fire, mockingjay] }
 
-      let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins._id).count } }
+      let(:authorships_count) { -> { AuthorshipsCollection.by_example(_from: suzanne_collins.arangodb_id).count } }
 
       before do
         suzanne_collins.books = [the_hunger_games, catching_fire, mockingjay, deathly_hallows]
