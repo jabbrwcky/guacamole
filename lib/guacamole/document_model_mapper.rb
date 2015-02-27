@@ -114,15 +114,15 @@ module Guacamole
     end
 
     class << self
-      # construct the {collection} class for a given model name.
+      # Construct the {collection} class for a given model name.
       #
       # @example
       #   collection_class = collection_for(:user)
-      #   collection_class == userscollection # would be true
+      #   collection_class == UsersCollection # would be true
       #
       # @note This is an class level alias for {DocumentModelMapper#collection_for}
-      # @param [symbol, string] model_name the name of the model
-      # @return [class] the {collection} class for the given model name
+      # @param [Symbol, String] model_name the name of the model
+      # @return [Class] the {Collection} class for the given model name
       def collection_for(model_name)
         "#{model_name.to_s.classify.pluralize}Collection".constantize
       end
