@@ -71,10 +71,7 @@ module Guacamole
       # @see http://rubydoc.info/gems/ashikawa-core/Ashikawa/Core/VertexCollection
       # @return [Ashikawa::Core::VertexCollection]
       def connection
-        # FIXME: This is a workaround for a bug in Ashikawa::Core (https://github.com/triAGENS/ashikawa-core/issues/139)
         @connection ||= graph.add_vertex_collection(collection_name)
-      rescue
-        @connection ||= graph.vertex_collection(collection_name)
       end
 
       # The DocumentModelMapper for this collection
