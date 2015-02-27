@@ -49,10 +49,6 @@ module Guacamole
         graph.add_edge_definition(collection_name,
                                   from: [edge_class.from],
                                   to: [edge_class.to])
-      rescue Ashikawa::Core::ResourceNotFound
-        # FIXME: We just assume this 404 is raised because the edge definition is already created.
-        #        But the source of the error could be something else too. Had to be changed as soon
-        #        https://github.com/triAGENS/ashikawa-core/issues/136 is done.
       end
 
       def neighbors(model, direction = :inbound)
