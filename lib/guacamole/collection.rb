@@ -298,9 +298,9 @@ module Guacamole
       #       persisted. In future versions we should add something like `:autosave`
       #       to always save associated models.
       def create_document_from(model)
-        with_transaction(model) do |document|
-          model.key = document['_key']
-          model.rev = document['_rev']
+        with_transaction(model) do |model_instance, document|
+          model_instance.key = document['_key']
+          model_instance.rev = document['_rev']
         end
       end
 
@@ -309,15 +309,27 @@ module Guacamole
       # @api private
       # @note This will **not** update associated models (see {#create})
       def replace_document_from(model)
-        with_transaction(model) do |document|
-          model.rev = document['_rev']
+        with_transaction(model) do |model_instance, document|
+          model_instance.rev = document['_rev']
         end
       end
 
+      # Will run a {Transaction} with the given model.
+      #
+      # The result of the transaction run is a hash with Ruby object ids pointing
+      # to ArangoDB documents represented as hashes. In order to update the `rev`
+      # and `key` attributes of all affected models we yield each found model along
+      # with its document back to the caller.
+      #
+      # @yield [Model, Document] The affected model along with its document returned from the database
+      # @return [Model] the given model
+      # @api private
       def with_transaction(model)
         result = Transaction.run(collection: self, model: model)
 
-        yield result[model.object_id.to_s]
+        result.each do |object_id, document|
+          yield ObjectSpace._id2ref(object_id.to_i), document if block_given?
+        end
 
         model
       end

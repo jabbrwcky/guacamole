@@ -177,6 +177,39 @@ describe Guacamole::Collection do
     end
   end
 
+  describe 'with_transaction' do
+    let(:transaction) { double('Transaction') }
+    let(:transaction_result) { double('Result') }
+    let(:model) { double('Model') }
+    let(:model_object_id) { double('ObjectId') }
+    let(:document) { double('Document') }
+
+    before do
+      stub_const('Guacamole::Transaction', transaction)
+
+      allow(transaction).to receive(:run).with(collection: subject, model: model).and_return(transaction_result)
+      allow(transaction_result).to receive(:each).and_yield(model_object_id, document)
+      allow(model_object_id).to receive(:to_i).and_return(model_object_id)
+      allow(ObjectSpace).to receive(:_id2ref).with(model_object_id).and_return(model)
+    end
+
+    it 'should run the transaction with this collection and the given model' do
+      expect(transaction).to receive(:run).with(collection: subject, model: model).and_return(transaction_result)
+
+      subject.with_transaction(model)
+    end
+
+    it 'should return the given model' do
+      expect(subject.with_transaction(model)).to eq model
+    end
+
+    it 'should yield each touched model by the transaction along with the according document' do
+      expect(ObjectSpace).to receive(:_id2ref).with(model_object_id).and_return(model)
+
+      expect { |b| subject.with_transaction(model, &b) }.to yield_with_args(model, document)
+    end
+  end
+
   describe 'create' do
     let(:key) { double('Key') }
     let(:rev) { double('Rev') }
@@ -185,7 +218,7 @@ describe Guacamole::Collection do
 
     before do
       allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-      allow(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+      allow(subject).to receive(:with_transaction).with(model).and_yield(model, document).and_return(model)
       allow(document).to receive(:[]).with('_key').and_return(key)
       allow(document).to receive(:[]).with('_rev').and_return(rev)
       allow(model).to receive(:key=).with(key)
@@ -198,7 +231,7 @@ describe Guacamole::Collection do
       end
 
       it 'should create a document with a Transaction' do
-        expect(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+        expect(subject).to receive(:with_transaction).with(model).and_yield(model, document).and_return(model)
 
         subject.create model
       end
@@ -325,7 +358,7 @@ describe Guacamole::Collection do
 
     before do
       allow(mapper).to receive(:model_to_document).with(model).and_return(document)
-      allow(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+      allow(subject).to receive(:with_transaction).with(model).and_yield(model, document).and_return(model)
       allow(document).to receive(:[]).with('_key').and_return(key)
       allow(document).to receive(:[]).with('_rev').and_return(rev)
       allow(model).to receive(:key=).with(key)
@@ -338,7 +371,7 @@ describe Guacamole::Collection do
       end
 
       it 'should update the document by key via the connection' do
-        expect(subject).to receive(:with_transaction).with(model).and_yield(document).and_return(model)
+        expect(subject).to receive(:with_transaction).with(model).and_yield(model, document).and_return(model)
 
         subject.update model
       end
