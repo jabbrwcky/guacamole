@@ -47,6 +47,19 @@ describe 'Graph based relations' do
 
         expect(author.books.map(&:title)).to match_array panem_trilogy.map(&:title)
       end
+
+      it 'should populate the `key` and `rev` attribute of ALL vertices' do
+        suzanne_collins.books = panem_trilogy
+        AuthorsCollection.save suzanne_collins
+
+        expect(suzanne_collins.key).not_to be_nil
+        expect(suzanne_collins.rev).not_to be_nil
+
+        panem_trilogy.each do |book|
+          expect(book.key).not_to be_nil, "Book '#{book.title}' should have got a key"
+          expect(book.rev).not_to be_nil, "Book '#{book.title}' should have got a rev"
+        end
+      end
     end
 
     context 'one target is new' do
@@ -278,6 +291,18 @@ describe 'Graph based relations' do
 
       expect(reloaded_author.name).to eq 'Suzanne Collins'
       expect(reloaded_book.title).to eq 'The Hunger Games'
+    end
+
+    it 'should update the rev` attribute of ALL affected models' do
+      the_hunger_games_old_rev = the_hunger_games.rev
+      suzanne_collins_old_rev  = suzanne_collins.rev
+
+      the_hunger_games.title = 'The Hunger Games'
+      suzanne_collins.name = 'Suzanne Collins'
+      AuthorsCollection.save suzanne_collins
+
+      expect(the_hunger_games.rev).not_to eq the_hunger_games_old_rev
+      expect(suzanne_collins.rev).not_to eq suzanne_collins_old_rev
     end
   end
 end
