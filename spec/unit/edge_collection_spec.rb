@@ -48,7 +48,7 @@ describe Guacamole::EdgeCollection do
         expect(edge_collection.ancestors).to include Guacamole::EdgeCollection
       end
 
-      it 'should return the edge collection for a givene edge class' do
+      it 'should return the edge collection for a given edge class' do
         allow(subject).to receive(:create_edge_collection).
                            with('AmazingEdgesCollection').
                            and_return(auto_defined_edge_collection)
