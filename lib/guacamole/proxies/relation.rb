@@ -15,7 +15,15 @@ module Guacamole
 
         @target = lambda do
           neighbors = edge_collection.neighbors(@model, direction)
-          relates_to_collection? ? neighbors : neighbors.to_a.first
+          if relates_to_collection?
+            if is_a_hash?
+              neighbors.to_a.map{ |e| [e[0]['hash_key'], e[1]] }.to_h
+            else
+              neighbors.to_a.map{ |e| e[0] }
+            end
+          else
+            neighbors.to_a.first
+          end
         end
       end
 
@@ -29,6 +37,10 @@ module Guacamole
 
       def relates_to_collection?
         !@options[:just_one]
+      end
+
+      def is_a_hash?
+        @options[:relation_type]==:Hash
       end
     end
   end

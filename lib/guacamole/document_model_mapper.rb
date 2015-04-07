@@ -49,6 +49,10 @@ module Guacamole
         value.is_a?(Guacamole::Query) ? value.entries : value
       end
 
+      def type(model)
+        model.send(:attribute_set)[name].type
+      end
+
       # The name of the setter for this attribute
       #
       # @return [String] The method name to set this attribute
@@ -150,17 +154,27 @@ module Guacamole
     # @param [Ashikawa::Core::Document] document
     # @return [Model] the resulting model with the given Model class
     def document_to_model(document)
-      identity_map.retrieve_or_store model_class, document.key do
-        model = model_class.new(document.to_h)
+      to_model(document.key, document.revision, document.to_h)
+      end
+    end
 
-        model.key = document.key
-        model.rev = document.revision
+    def hash_to_model(hash)
+      to_model(hash['_key'], hash['_revision'], hash)
+    end
+
+    def to_model(key, revision, hash)
+      identity_map.retrieve_or_store model_class, key do
+        model = model_class.new(hash)
+
+        model.key = key
+        model.rev = revision
 
         handle_related_documents(model)
 
         model
       end
     end
+
 
     # Map a model to a document
     #
@@ -282,12 +296,18 @@ module Guacamole
       opts = { just_one: !edge_attribute_a_collection?(model, edge_attribute),
                inverse: edge_attribute.inverse? }
 
-      Proxies::Relation.new(model, edge_attribute.edge_class, opts)
+      case edge_attribute.type(model)
+      when Virtus::Attribute::Collection::Type
+        Proxies::Relation.new(model, edge_attribute.edge_class, opts)
+      when Virtus::Attribute::Hash::Type
+        Proxies::Relation.new(model, edge_attribute.edge_class, opts.merge(relation_type: :Hash))
+      end
     end
 
     # @api private
     def edge_attribute_a_collection?(model, edge_attribute)
-      model.class.attribute_set[edge_attribute.name].type.is_a?(Virtus::Attribute::Collection::Type)
+      model.class.attribute_set[edge_attribute.name].type.is_a?(Virtus::Attribute::Collection::Type) ||
+        model.class.attribute_set[edge_attribute.name].type.is_a?(Virtus::Attribute::Hash::Type)
     end
   end
 end
