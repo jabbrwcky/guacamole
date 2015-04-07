@@ -21,7 +21,12 @@ module Guacamole
       end
 
       def method_missing(meth, *args, &blk)
-        target.call.send meth, *args, &blk
+        case meth
+        when :puts, :p, :pp
+          ::Kernel.send(meth, args, blk)
+        else
+          target.call.send meth, *args, &blk
+        end
       end
 
       def respond_to_missing?(name, include_private = false)
