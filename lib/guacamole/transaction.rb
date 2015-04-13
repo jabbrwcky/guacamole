@@ -216,13 +216,14 @@ module Guacamole
         value = edge_attribute.get_value(start_model)
         return [] unless value
         attr_type = edge_attribute.type(start_model)
+
         case attr_type
         when Virtus::Attribute::Hash::Type
           [ value.map{ |k,v| ModelWithAttributes.new(v, { hash_key: k }) } ].compact.flatten
         when Virtus::Attribute::Collection::Type
           [ value.map{ |v|  ModelWithAttributes.new(v, {}) } ].compact.flatten
         else
-          value ? ModelWithAttributes.new(value, {}) : []
+          [ ModelWithAttributes.new(value, {}) ]
         end
       end
 
@@ -270,7 +271,7 @@ module Guacamole
       #
       # @return [Array<Hash>] A list of hashes representing the edges
       def edges
-        from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
+        t = from_vertices.product(to_vertices).map do |from_vertex, to_vertex|
           { _from: from_vertex.id_for_edge, _to: to_vertex.id_for_edge, attributes: to_vertex.edge_attributes }
         end
       end
@@ -346,6 +347,7 @@ module Guacamole
     #
     # @api private
     def execute_transaction
+      pp transaction_params.as_json
       transaction.execute(transaction_params.as_json)
     end
 

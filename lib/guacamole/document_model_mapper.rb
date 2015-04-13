@@ -1,6 +1,7 @@
 # -*- encoding : utf-8 -*-
 
-require 'guacamole/proxies/relation'
+require 'guacamole/proxies/array'
+require 'guacamole/proxies/hash'
 
 module Guacamole
   # This is the default mapper class to map between Ashikawa::Core::Document and
@@ -155,7 +156,6 @@ module Guacamole
     # @return [Model] the resulting model with the given Model class
     def document_to_model(document)
       to_model(document.key, document.revision, document.to_h)
-      end
     end
 
     def hash_to_model(hash)
@@ -174,7 +174,6 @@ module Guacamole
         model
       end
     end
-
 
     # Map a model to a document
     #
@@ -298,9 +297,9 @@ module Guacamole
 
       case edge_attribute.type(model)
       when Virtus::Attribute::Collection::Type
-        Proxies::Relation.new(model, edge_attribute.edge_class, opts)
+        Proxies::Array.new(model, edge_attribute.edge_class, opts)
       when Virtus::Attribute::Hash::Type
-        Proxies::Relation.new(model, edge_attribute.edge_class, opts.merge(relation_type: :Hash))
+        Proxies::Hash.new(model, edge_attribute.edge_class, opts)
       end
     end
 

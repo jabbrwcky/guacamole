@@ -20,22 +20,17 @@ module Guacamole
         undef_method(method) unless method =~ /^__/
       end
 
+      def target
+      end
+
       def method_missing(meth, *args, &blk)
-        case meth
-        when :puts, :p, :pp
-          ::Kernel.send(meth, args, blk)
-        else
-          target.call.send meth, *args, &blk
-        end
+        target.send(meth, *args, &blk)
       end
 
       def respond_to_missing?(name, include_private = false)
         target.respond_to?(name, include_private)
       end
 
-      def target
-        @target || ->() { nil }
-      end
-    end
+   end
   end
 end
