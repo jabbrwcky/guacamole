@@ -126,10 +126,10 @@ describe Guacamole::Transaction::SubGraphTargetState do
   let(:to_model_class) { double('ToModelClass') }
 
   let(:from_collection) { double('Collection') }
-  let(:from_collection_name) { double('CollectionName') }
+  let(:from_collection_name) { double('FromCollectionName') }
 
   let(:to_collection) { double('Collection') }
-  let(:to_collection_name) { double('CollectionName') }
+  let(:to_collection_name) { double('ToCollectionName') }
 
   let(:edge_attribute) { double('EdgeAttribute') }
   let(:edge_class) { double('EdgeClass') }
@@ -137,10 +137,8 @@ describe Guacamole::Transaction::SubGraphTargetState do
   let(:edge_collection) { double('EdgeCollection') }
   let(:edge_collection_name) { double('EdgeCollectionName') }
 
-  let(:edge_hash_attribute) { double('EdgeAttribute') }
-
-  let(:from_document) { double('Document') }
-  let(:to_document) { double('Document') }
+  let(:from_document) { double('FromDocument') }
+  let(:to_document) { double('ToDocument') }
 
   subject { Guacamole::Transaction::SubGraphTargetState.new(model, edge_attribute) }
 
@@ -169,7 +167,6 @@ describe Guacamole::Transaction::SubGraphTargetState do
   its(:edge_class) { should eq edge_class }
 
   context "Array edge attribute" do
-
     before do
       allow(edge_attribute).to receive(:type).with(any_args).and_return(Virtus::Attribute::Collection::Type.new(to_model_class))
     end
@@ -212,7 +209,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       allow(edge_attribute).to receive(:type).with(any_args).and_return(:Model)
       related_model = instance_double('Model')
       allow(edge_attribute).to receive(:get_value).with(model).and_return(related_model)
-      expect(subject.related_models).to eq [related_model, {}]
+      expect(subject.related_models).to eq [Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(related_model, {})]
     end
 
     it 'should get multiple related models of the edge_attribute as array' do
@@ -220,7 +217,9 @@ describe Guacamole::Transaction::SubGraphTargetState do
       related_model2 = instance_double('Model')
       allow(edge_attribute).to receive(:get_value).with(model).and_return([related_model1, related_model2])
 
-      expect(subject.related_models).to eq [related_model1, {}, related_model2, {}]
+      expect(subject.related_models).to eq [
+        Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(related_model1, {}),
+        Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(related_model2, {})]
     end
 
     describe 'building of edges' do
@@ -280,10 +279,17 @@ describe Guacamole::Transaction::SubGraphTargetState do
         before do
           allow(from_model_class).to receive(:===).with(model).and_return(true)
           allow(to_model_class).to receive(:===).with(model).and_return(false)
-          allow(subject).to receive(:related_models).and_return([to_model, {}])
+          allow(subject).to receive(:related_models).and_return(
+            [Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(
+              to_model, {})
+            ])
         end
 
         it 'should transform model to the :from vertices' do
+          allow(Guacamole::Transaction::Vertex).to receive(:new).
+            with(from_model, from_collection_name, from_document, {}).
+            and_return(from_vertex)
+
           expect(subject.from_vertices).to eq [from_vertex]
         end
 
@@ -305,7 +311,8 @@ describe Guacamole::Transaction::SubGraphTargetState do
         before do
           allow(from_model_class).to receive(:===).with(model).and_return(false)
           allow(to_model_class).to receive(:===).with(model).and_return(true)
-          allow(subject).to receive(:related_models).and_return([from_model])
+          allow(subject).to receive(:related_models).and_return(
+            [Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(from_model,{})])
         end
 
         it 'should transform model to the :to vertices' do
@@ -313,6 +320,10 @@ describe Guacamole::Transaction::SubGraphTargetState do
         end
 
         it 'should transform the related models to :from vertices' do
+          allow(Guacamole::Transaction::Vertex).to receive(:new).
+            with(from_model, from_collection_name, from_document, {}).
+            and_return(from_vertex)
+
           expect(subject.from_vertices).to eq [from_vertex]
         end
 
@@ -375,7 +386,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
       related_model = instance_double('Model')
       allow(edge_attribute).to receive(:get_value).with(model).and_return( { key: related_model } )
 
-      expect(subject.related_models).to eql [ related_model, {hash_key: :key} ]
+      expect(subject.related_models).to eql [Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(related_model, {hash_key: :key}) ]
     end
 
     it 'should get multiple related models of the edge_attribute as array' do
@@ -383,7 +394,12 @@ describe Guacamole::Transaction::SubGraphTargetState do
       related_model2 = instance_double('Model')
       allow(edge_attribute).to receive(:get_value).with(model).and_return( { key: related_model1, other_key: related_model2 } )
 
-      expect(subject.related_models).to eql [ related_model1, { hash_key: :key }, related_model2, { hash_key: :other_key } ]
+      expect(subject.related_models).to eql [
+        Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(
+          related_model1, { hash_key: :key }),
+        Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(
+          related_model2, { hash_key: :other_key })
+      ]
     end
 
     describe 'building of edges' do
@@ -424,7 +440,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
 
     describe 'building of vertices' do
       let(:from_vertex) { double('Vertex') }
-      let(:to_vertex) { double('Vertex') }
+      let(:to_vertex) { double('Vertex', { hash_key: "foo" }) }
       let(:query_result) { double('Query') }
 
       before do
@@ -435,10 +451,7 @@ describe Guacamole::Transaction::SubGraphTargetState do
         allow(subject).to receive(:model_to_document).with(to_model).and_return(to_document)
 
         allow(Guacamole::Transaction::Vertex).to receive(:new).
-          with(from_model, from_collection_name, from_document, nil).
-          and_return(from_vertex)
-        allow(Guacamole::Transaction::Vertex).to receive(:new).
-          with(to_model, to_collection_name, to_document, {}).
+          with(to_model, to_collection_name, to_document, {"hash_key" => "foo"}).
           and_return(to_vertex)
       end
 
@@ -449,10 +462,13 @@ describe Guacamole::Transaction::SubGraphTargetState do
         before do
           allow(from_model_class).to receive(:===).with(model).and_return(true)
           allow(to_model_class).to receive(:===).with(model).and_return(false)
-          allow(subject).to receive(:related_models).and_return([to_model])
+          allow(subject).to receive(:related_models).and_return([Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(to_model,{"hash_key" => "foo"})])
         end
 
         it 'should transform model to the :from vertices' do
+          allow(Guacamole::Transaction::Vertex).to receive(:new).
+            with(from_model, from_collection_name, from_document, {}).
+            and_return(from_vertex)
           expect(subject.from_vertices).to eq [from_vertex]
         end
 
@@ -474,14 +490,28 @@ describe Guacamole::Transaction::SubGraphTargetState do
         before do
           allow(from_model_class).to receive(:===).with(model).and_return(false)
           allow(to_model_class).to receive(:===).with(model).and_return(true)
-          allow(subject).to receive(:related_models).and_return([from_model])
+          allow(subject).to receive(:related_models).and_return(
+            [Guacamole::Transaction::SubGraphTargetState::ModelWithAttributes.new(
+              from_model, {hash_key: 'foo'})
+            ])
+#          allow(Guacamole::Transaction::Vertex).to receive(:new).
+#            with(to_model, from_collection_name, from_document, {}).
+#            and_return(from_vertex)
         end
 
         it 'should transform model to the :to vertices' do
+          allow(Guacamole::Transaction::Vertex).to receive(:new).
+            with(to_model, to_collection_name, to_document, {}).
+            and_return(to_vertex)
+
           expect(subject.to_vertices).to eq [to_vertex]
         end
 
         it 'should transform the related models to :from vertices' do
+          allow(Guacamole::Transaction::Vertex).to receive(:new).
+            with(from_model, from_collection_name, from_document, {hash_key: 'foo'}).
+            and_return(from_vertex)
+
           expect(subject.from_vertices).to eq [from_vertex]
         end
 
@@ -495,136 +525,136 @@ describe Guacamole::Transaction::SubGraphTargetState do
   end
 end
 
-  describe Guacamole::Transaction do
-    let(:collection) { double('Collection') }
-    let(:model) { instance_double('Model') }
-    let(:database) { double('Database') }
-    let(:init_options) { { collection: collection, model: model } }
+describe Guacamole::Transaction do
+  let(:collection) { double('Collection') }
+  let(:model) { instance_double('Model') }
+  let(:database) { double('Database') }
+  let(:init_options) { { collection: collection, model: model } }
 
-    subject { Guacamole::Transaction.new(init_options) }
+  subject { Guacamole::Transaction.new(init_options) }
 
-    before do
-      allow(collection).to receive(:connection)
-      allow(collection).to receive(:database).and_return(database)
-    end
+  before do
+    allow(collection).to receive(:connection)
+    allow(collection).to receive(:database).and_return(database)
+  end
 
-    describe '#run' do
-      subject { Guacamole::Transaction }
+  describe '#run' do
+    subject { Guacamole::Transaction }
 
-      let(:transaction_instance) { instance_double('Guacamole::Transaction') }
+    let(:transaction_instance) { instance_double('Guacamole::Transaction') }
 
-      it 'should build a new transaction and execute it' do
-        allow(subject).to receive(:new).with(init_options).and_return(transaction_instance)
-        expect(transaction_instance).to receive(:execute_transaction)
+    it 'should build a new transaction and execute it' do
+      allow(subject).to receive(:new).with(init_options).and_return(transaction_instance)
+      expect(transaction_instance).to receive(:execute_transaction)
 
-        subject.run(init_options)
-      end
-    end
-
-    describe 'initialization' do
-      its(:collection) { should eq collection }
-      its(:model)      { should eq model }
-      its(:database)   { should eq database }
-
-      it 'should init the connection to the database' do
-        expect(collection).to receive(:connection)
-
-        Guacamole::Transaction.new(init_options)
-      end
-    end
-
-    describe 'edge_collections for the transaction' do
-      it 'should pass model and collection to TargetStatesBuilder to create the edge_collections' do
-        expect(Guacamole::Transaction::TargetStatesBuilder).to receive(:build).with(model, collection)
-
-        subject.edge_collections
-      end
-    end
-
-    describe 'determine write and read collections for the transaction' do
-      let(:edge_collection) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
-      let(:from_vertex) { instance_double('Guacamole::Transaction::Vertex') }
-      let(:to_vertex) { instance_double('Guacamole::Transaction::Vertex') }
-
-      let(:edge_collection_name) { double('EdgeCollectionName') }
-      let(:from_vertex_collection_name) { double('FromName') }
-      let(:to_vertex_collection_name) { double('ToName') }
-
-      before do
-        allow(subject).to receive(:edge_collections).and_return([edge_collection])
-        allow(edge_collection).to receive(:edge_collection_name).and_return(edge_collection_name)
-        allow(edge_collection).to receive(:from_vertices).and_return([from_vertex])
-        allow(edge_collection).to receive(:to_vertices).and_return([to_vertex])
-        allow(from_vertex).to receive(:collection).and_return(from_vertex_collection_name)
-        allow(to_vertex).to receive(:collection).and_return(to_vertex_collection_name)
-      end
-
-      it 'should collect all edge_collection and vertex collection names of all target states as write collection' do
-        expect(subject.write_collections).to eq [edge_collection_name,
-                                                 from_vertex_collection_name,
-                                                 to_vertex_collection_name]
-      end
-
-      it 'should have the same read collection as the write collections' do
-        expect(subject.read_collections).to eq subject.write_collections
-      end
-    end
-
-    describe 'send the transaction to the database' do
-      let(:graph) { double('Graph', name: 'graph') }
-      let(:shared_path) { double('Path') }
-      let(:config) { double('Config', graph: graph, shared_path: shared_path) }
-
-      before do
-        allow(Guacamole).to receive(:configuration).and_return(config)
-      end
-
-      it 'should create the parameters for the transaction' do
-        edge_collections = double('EdgeCollections')
-        allow(subject).to receive(:edge_collections).and_return(edge_collections)
-
-        expect(subject.transaction_params).to eq(edgeCollections: edge_collections,
-                                                 graph: graph.name,
-                                                 log_level: 'debug')
-      end
-
-      it 'should prepare the transaction on the database' do
-        transaction_code = double('TransactionCode')
-        write_collections = double('WriteCollections')
-        read_collections = double('ReadCollections')
-        allow(subject).to receive(:transaction_code).and_return(transaction_code)
-        allow(subject).to receive(:write_collections).and_return(write_collections)
-        allow(subject).to receive(:read_collections).and_return(read_collections)
-
-        transaction_options = { write: write_collections, read: read_collections }
-
-        db_transaction = double('DBTransaction')
-        allow(database).to receive(:create_transaction).
-          with(transaction_code, transaction_options).
-          and_return(db_transaction)
-        allow(db_transaction).to receive(:wait_for_sync=).with(true)
-
-        subject.transaction
-      end
-
-      it 'should load the transaction code' do
-        path_to_transaction = double('TransactionCode')
-        allow(shared_path).to receive(:join).with('transaction.js').and_return(path_to_transaction)
-        expect(File).to receive(:read).with(path_to_transaction)
-
-        subject.transaction_code
-      end
-
-      it 'should execute the transaction with the parameters' do
-        transaction        = double('DBTransaction')
-        transaction_params = double('TransactionParams')
-
-        allow(subject).to receive(:transaction).and_return(transaction)
-        allow(subject).to receive(:transaction_params).and_return(transaction_params)
-        allow(transaction_params).to receive(:as_json).and_return(transaction_params)
-        expect(transaction).to receive(:execute).with(transaction_params)
-
-        subject.execute_transaction
-      end
+      subject.run(init_options)
     end
   end
+
+  describe 'initialization' do
+    its(:collection) { should eq collection }
+    its(:model)      { should eq model }
+    its(:database)   { should eq database }
+
+    it 'should init the connection to the database' do
+      expect(collection).to receive(:connection)
+
+      Guacamole::Transaction.new(init_options)
+    end
+  end
+
+  describe 'edge_collections for the transaction' do
+    it 'should pass model and collection to TargetStatesBuilder to create the edge_collections' do
+      expect(Guacamole::Transaction::TargetStatesBuilder).to receive(:build).with(model, collection)
+
+      subject.edge_collections
+    end
+  end
+
+  describe 'determine write and read collections for the transaction' do
+    let(:edge_collection) { instance_double('Guacamole::Transaction::SubGraphTargetState') }
+    let(:from_vertex) { instance_double('Guacamole::Transaction::Vertex') }
+    let(:to_vertex) { instance_double('Guacamole::Transaction::Vertex') }
+
+    let(:edge_collection_name) { double('EdgeCollectionName') }
+    let(:from_vertex_collection_name) { double('FromName') }
+    let(:to_vertex_collection_name) { double('ToName') }
+
+    before do
+      allow(subject).to receive(:edge_collections).and_return([edge_collection])
+      allow(edge_collection).to receive(:edge_collection_name).and_return(edge_collection_name)
+      allow(edge_collection).to receive(:from_vertices).and_return([from_vertex])
+      allow(edge_collection).to receive(:to_vertices).and_return([to_vertex])
+      allow(from_vertex).to receive(:collection).and_return(from_vertex_collection_name)
+      allow(to_vertex).to receive(:collection).and_return(to_vertex_collection_name)
+    end
+
+    it 'should collect all edge_collection and vertex collection names of all target states as write collection' do
+      expect(subject.write_collections).to eq [edge_collection_name,
+                                               from_vertex_collection_name,
+                                               to_vertex_collection_name]
+    end
+
+    it 'should have the same read collection as the write collections' do
+      expect(subject.read_collections).to eq subject.write_collections
+    end
+  end
+
+  describe 'send the transaction to the database' do
+    let(:graph) { double('Graph', name: 'graph') }
+    let(:shared_path) { double('Path') }
+    let(:config) { double('Config', graph: graph, shared_path: shared_path) }
+
+    before do
+      allow(Guacamole).to receive(:configuration).and_return(config)
+    end
+
+    it 'should create the parameters for the transaction' do
+      edge_collections = double('EdgeCollections')
+      allow(subject).to receive(:edge_collections).and_return(edge_collections)
+
+      expect(subject.transaction_params).to eq(edgeCollections: edge_collections,
+                                               graph: graph.name,
+                                               log_level: 'debug')
+    end
+
+    it 'should prepare the transaction on the database' do
+      transaction_code = double('TransactionCode')
+      write_collections = double('WriteCollections')
+      read_collections = double('ReadCollections')
+      allow(subject).to receive(:transaction_code).and_return(transaction_code)
+      allow(subject).to receive(:write_collections).and_return(write_collections)
+      allow(subject).to receive(:read_collections).and_return(read_collections)
+
+      transaction_options = { write: write_collections, read: read_collections }
+
+      db_transaction = double('DBTransaction')
+      allow(database).to receive(:create_transaction).
+        with(transaction_code, transaction_options).
+        and_return(db_transaction)
+      allow(db_transaction).to receive(:wait_for_sync=).with(true)
+
+      subject.transaction
+    end
+
+    it 'should load the transaction code' do
+      path_to_transaction = double('TransactionCode')
+      allow(shared_path).to receive(:join).with('transaction.js').and_return(path_to_transaction)
+      expect(File).to receive(:read).with(path_to_transaction)
+
+      subject.transaction_code
+    end
+
+    it 'should execute the transaction with the parameters' do
+      transaction        = double('DBTransaction')
+      transaction_params = double('TransactionParams')
+
+      allow(subject).to receive(:transaction).and_return(transaction)
+      allow(subject).to receive(:transaction_params).and_return(transaction_params)
+      allow(transaction_params).to receive(:as_json).and_return(transaction_params)
+      expect(transaction).to receive(:execute).with(transaction_params)
+
+      subject.execute_transaction
+    end
+  end
+end

@@ -208,7 +208,9 @@ describe Guacamole::EdgeCollection do
         end
 
         it 'should set the mapper to the appropriate mapper of model' do
-          expect(Guacamole::AqlQuery).to receive(:new).with(anything, mapper, anything)
+          model_class = double
+          stub_const('Model', double)
+          expect(Guacamole::AqlQuery).to receive(:new).with(anything,instance_of(Guacamole::EdgeCollection::AnnotatedEdgeMapper), anything)
 
           subject.neighbors(model)
         end
