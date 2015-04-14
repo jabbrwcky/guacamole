@@ -300,6 +300,11 @@ module Guacamole
         Proxies::Array.new(model, edge_attribute.edge_class, opts)
       when Virtus::Attribute::Hash::Type
         Proxies::Hash.new(model, edge_attribute.edge_class, opts)
+      else
+        pp model
+        pp edge_attribute
+        pp opts
+        Proxies::Array.new(model, edge_attribute.edge_class, opts)
       end
     end
 
