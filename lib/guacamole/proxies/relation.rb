@@ -42,8 +42,7 @@ module Guacamole
       end
 
       def query_result
-        @query_result ||= query.to_a
-        @query_result
+        query.to_a
       end
 
       def method_missing(meth, *args, &blk)

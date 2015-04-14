@@ -347,7 +347,6 @@ module Guacamole
     #
     # @api private
     def execute_transaction
-      pp transaction_params.as_json
       transaction.execute(transaction_params.as_json)
     end
 
