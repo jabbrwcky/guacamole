@@ -11,7 +11,7 @@ module Guacamole
         if relates_to_collection?
           query_result.map{ |e| [e.edge_attributes['hash_key'], e.model] }.to_h
         else
-          ::Kernel.puts "Hash-nocollection #{query_result}"
+          # todo change to Guacamole::Proxies::Single for inverse relations
           query_result.first.model
         end
       end
