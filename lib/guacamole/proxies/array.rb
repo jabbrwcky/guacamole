@@ -11,7 +11,6 @@ module Guacamole
         if relates_to_collection?
           return query_result.map{ |e| e.model }
         else
-          ::Kernel.puts "Array-nocollection #{query_result}"
           return query_result.first.model
         end
       end
