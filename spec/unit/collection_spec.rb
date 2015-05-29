@@ -10,6 +10,13 @@ class TestCollection
   include Guacamole::Collection
 end
 
+module Namespaced
+  class Test
+  end
+  class TestCollection
+    include Guacamole::Collection  end
+end
+
 describe Guacamole::Collection do
   let(:callbacks) { double('Callback') }
   let(:callbacks_module) { double('CallbacksModule') }
@@ -506,4 +513,19 @@ describe Guacamole::Collection do
       subject.callbacks model
     end
   end
+
+  describe 'namespaces' do
+
+    subject { Namespaced::TestCollection }
+
+    it 'should return legal collection name' do
+      expect(subject.collection_name).to eq 'namespaced__test'
+    end
+
+    it 'should return correct model name' do
+      expect(subject.model_class).to eq Namespaced::Test
+    end
+
+  end
+
 end

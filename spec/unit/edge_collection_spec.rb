@@ -238,5 +238,23 @@ describe Guacamole::EdgeCollection do
         end
       end
     end
+
+  end
+  
+  context 'namespaced edge collections' do
+
+    subject do
+      module Namespaced
+        class TestEdge
+          include Guacamole::Edge
+        end
+
+        class TestEdgesCollection
+          include Guacamole::EdgeCollection
+        end
+      end
+    end
+
+    its (:collection_name) { should eq 'namespaced__test_edges' }
   end
 end

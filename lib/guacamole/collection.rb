@@ -88,14 +88,14 @@ module Guacamole
       #
       # @return [String] The name
       def collection_name
-        @collection_name ||= name.gsub(/Collection\z/, '').underscore
+        @collection_name ||= name.gsub(/Collection\z/, '').underscore.gsub('/', '__')
       end
 
       # The class of the resulting models
       #
       # @return [Class] The model class
       def model_class
-        @model_class ||= collection_name.singularize.camelcase.constantize
+        @model_class ||= collection_name.gsub('__', '/').singularize.camelcase.constantize
       end
 
       # Find a model by its key
