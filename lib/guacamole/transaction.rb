@@ -307,6 +307,7 @@ module Guacamole
     # @return [Array<String>] A list of the collection names we will write to
     def write_collections
       edge_collections.flat_map do |target_state|
+        puts "TargetState: #{target_state}"
         [target_state.edge_collection_name] +
           (target_state.from_vertices + target_state.to_vertices).map(&:collection)
       end.uniq.compact

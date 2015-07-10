@@ -23,15 +23,29 @@ module Guacamole
     class << self
       def for(edge_class)
         collection_name = [edge_class.name.pluralize, 'Collection'].join
-
         collection_name.constantize
       rescue NameError
         create_edge_collection(collection_name)
       end
 
-      def create_edge_collection(collection_name)
+      def create_edge_collection(qualified_collection_name)
+        hierarchy = qualified_collection_name.split('::')
+        collection_name = hierarchy.last
+        mod=Object
+
+        unless hierarchy.length == 1
+          puts hierarchy[0..-2]
+          hierarchy[0..-2].each do |m|
+            begin
+              mod = mod.const_get(m, false)
+            rescue NameError
+              mod = mod.class_eval{const_set(m, Module.new)}
+            end
+          end
+        end
+
         new_collection_class = Class.new
-        Object.const_set(collection_name, new_collection_class)
+        mod.const_set(collection_name, new_collection_class)
         new_collection_class.send(:include, Guacamole::EdgeCollection)
       end
     end
@@ -46,6 +60,7 @@ module Guacamole
       end
 
       def add_edge_definition_to_graph
+        puts "add_edge_definition", collection_name, edge_class.from, edge_class.to
         graph.add_edge_definition(collection_name,
                                   from: [edge_class.from],
                                   to: [edge_class.to])
