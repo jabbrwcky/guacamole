@@ -271,8 +271,11 @@ module Guacamole
     # @api private
     def handle_embedded_models(model, document)
       models_to_embed.each do |attribute_name|
-        document[attribute_name] = model.send(attribute_name).map do |embedded_model|
-          embedded_model.attributes.except(:key, :rev)
+        attribute = model.send(attribute_name)
+        if attribute
+          document[attribute_name] = attribute.map do |embedded_model|
+            embedded_model.attributes.except(:key, :rev)
+          end
         end
       end
     end
