@@ -275,7 +275,6 @@ module Guacamole
         case attribute
         when Array
           document[attribute_name] = attribute.map do |embedded_model|
-            #puts "Embedded Array: #{embedded_model.attributes}"
             embedded_model.attributes.except(:key, :rev)
           end
         else

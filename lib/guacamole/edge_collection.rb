@@ -50,7 +50,6 @@ module Guacamole
         mod=Object
 
         unless hierarchy.length == 1
-          puts hierarchy[0..-2]
           hierarchy[0..-2].each do |m|
             begin
               mod = mod.const_get(m, false)
