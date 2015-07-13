@@ -258,10 +258,13 @@ module Guacamole
     def handle_embedded_models(model, document)
       models_to_embed.each do |attribute_name|
         attribute = model.send(attribute_name)
-        if attribute
+        case attribute
+        when Array
           document[attribute_name] = attribute.map do |embedded_model|
             embedded_model.attributes.except(:key, :rev)
           end
+        else
+          document[attribute_name] = attribute.attributes.except(:key, :rev)
         end
       end
     end

@@ -60,10 +60,9 @@ module Guacamole
       end
 
       def add_edge_definition_to_graph
-        puts "add_edge_definition", collection_name, edge_class.from, edge_class.to
         graph.add_edge_definition(collection_name,
-                                  from: [edge_class.from],
-                                  to: [edge_class.to])
+                                  from: [edge_class.from.to_s.gsub('/','__')],
+                                  to: [edge_class.to.to_s.gsub('/','__')])
       end
 
       def neighbors(model, direction = :inbound)
