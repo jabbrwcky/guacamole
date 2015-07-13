@@ -278,6 +278,7 @@ module Guacamole
             #puts "Embedded Array: #{embedded_model.attributes}"
             embedded_model.attributes.except(:key, :rev)
           end
+        else
           document[attribute_name] = attribute.attributes.except(:key, :rev)
         end
       end
