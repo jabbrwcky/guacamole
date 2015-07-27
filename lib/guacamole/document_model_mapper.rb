@@ -278,7 +278,8 @@ module Guacamole
             embedded_model.attributes.except(:key, :rev)
           end
         else
-          document[attribute_name] = attribute.attributes.except(:key, :rev)
+          #TODO cleaner handling of embedded models
+          document[attribute_name] = attribute.attributes.except(:key, :rev) if attribute
         end
       end
     end
