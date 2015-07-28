@@ -270,16 +270,18 @@ module Guacamole
 
     # @api private
     def handle_embedded_models(model, document)
+      puts models_to_embed
       models_to_embed.each do |attribute_name|
         attribute = model.send(attribute_name)
         case attribute
         when Array
           document[attribute_name] = attribute.map do |embedded_model|
-            embedded_model.attributes.except(:key, :rev)
+            puts embedded_model
+            embedded_model.embeddable
           end
         else
           #TODO cleaner handling of embedded models
-          document[attribute_name] = attribute.attributes.except(:key, :rev) if attribute
+          document[attribute_name] = attribute.embeddable if attribute
         end
       end
     end

@@ -264,6 +264,18 @@ module Guacamole
       end
       alias_method :eql?, :==
 
+      def embeddable
+        puts self.attributes.except(:key, :rev).keys
+        self.attributes.except(:key,:rev).map do |k, v|
+          case v
+          when Array
+            [k, v.map{ |e| e && e.respond_to?(:embeddable) ? e.embeddable : e } ]
+          else
+            [k, (v && v.respond_to?(:embeddable)) ? v.embeddable : v ]
+          end
+
+        end.to_h
+      end
     end
   end
 end
