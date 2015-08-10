@@ -8,7 +8,6 @@ module Guacamole
     class Hash < Relation
 
       def resolve(query_result)
-        ::Kernel.puts 'Hash#resolve'
         if relates_to_collection?
           query_result.map{ |e| [e.edge_attributes['hash_key'], e.model] }.to_h
         else

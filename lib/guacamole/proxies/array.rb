@@ -8,7 +8,6 @@ module Guacamole
     class Array < Relation
 
       def resolve(query_result)
-        ::Kernel.puts 'Array#resolve'
         if relates_to_collection?
           return query_result.map{ |e| e.model }.compact
         else
