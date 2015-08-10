@@ -27,6 +27,7 @@ module Guacamole
       end
 
       Container = Struct.new(:edge_attributes, :model)
+
       def document_to_model(document)
         Container.new(document['edge_attributes'], @model_mapper.hash_to_model(document['vertex']))
       end

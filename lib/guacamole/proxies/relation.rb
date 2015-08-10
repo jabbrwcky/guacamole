@@ -46,7 +46,7 @@ module Guacamole
       end
 
       def method_missing(meth, *args, &blk)
-        if query.methods.include?(meth) and query.method(meth).owner =~ /Guacamole::/
+        if query.methods.include?(meth) && query.method(meth).owner =~ /Guacamole::/
           query.send(meth, *args, &blk)
         else
           super(meth,*args,&blk)

@@ -160,7 +160,7 @@ module Guacamole
     end
 
     def hash_to_model(hash)
-      to_model(hash['_key'], hash['_revision'], hash)
+      to_model(hash['_key'], hash['_revision'], hash) if hash
     end
 
     def to_model(key, revision, hash)
